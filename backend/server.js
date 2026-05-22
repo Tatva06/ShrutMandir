@@ -23,15 +23,26 @@ app.use('/api/attendance', attendanceRoutes);
 // ─── MongoDB Connection ───────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => {
+const connectDB = async () => {
+  if (mongoose.connection.readyState >= 1) {
+    return;
+  }
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
     console.log('✅ Connected to MongoDB');
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-    });
-  })
-  .catch((err) => {
+  } catch (err) {
     console.error('❌ MongoDB connection failed:', err.message);
-    process.exit(1);
+  }
+};
+
+connectDB();
+
+// Only listen locally, Vercel will handle the serverless function execution
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   });
+}
+
+// Export the app for Vercel Serverless Functions
+module.exports = app;
