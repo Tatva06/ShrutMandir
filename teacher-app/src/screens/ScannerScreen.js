@@ -7,10 +7,13 @@ import {
   Alert,
   StatusBar,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = Platform.OS === 'web'
+  ? 'http://localhost:5000/api'
+  : 'http://10.100.58.122:5000/api';
 
 // How long (ms) to lock scanning after a successful read — prevents double-scans
 const SCAN_COOLDOWN_MS = 3000;

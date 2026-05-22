@@ -10,9 +10,12 @@ import {
   StatusBar,
   Alert,
   RefreshControl,
+  Platform,
 } from 'react-native';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = Platform.OS === 'web'
+  ? 'http://localhost:5000/api'
+  : 'http://10.100.58.122:5000/api';
 
 // Per-student status options a teacher can toggle
 const STATUSES = ['Present', 'Absent', 'Late'];
