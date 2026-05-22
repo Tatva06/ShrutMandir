@@ -38,11 +38,11 @@ router.post('/', async (req, res) => {
       );
       createdLogs.push(log);
 
-      // 2️⃣  Increment the student's totalPoints (only when points were actually awarded)
+      // 2️⃣  Increment the student's points (only when points were actually awarded)
       if (pointsAwarded !== 0) {
         await Student.findByIdAndUpdate(
           studentId,
-          { $inc: { totalPoints: pointsAwarded } },
+          { $inc: { points: pointsAwarded } },
           { session }
         );
       }
