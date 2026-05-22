@@ -11,18 +11,16 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
-const API_BASE = Platform.OS === 'web'
-  ? 'http://localhost:5000/api'
-  : 'http://10.100.58.122:5000/api';
+const API_BASE = 'https://shrut-mandir.vercel.app/api';
 
 // How long (ms) to lock scanning after a successful read — prevents double-scans
 const SCAN_COOLDOWN_MS = 3000;
 
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned]           = useState(false);
-  const [processing, setProcessing]     = useState(false);
-  const [lastScanned, setLastScanned]   = useState(null);
+  const [scanned, setScanned] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [lastScanned, setLastScanned] = useState(null);
   const cooldownRef = useRef(null);
 
   // Clean up cooldown timer on unmount
@@ -39,7 +37,7 @@ export default function ScannerScreen() {
     try {
       // data is expected to be the student's qrId
       // First, find the student matching this qrId
-      const searchRes  = await fetch(`${API_BASE}/students`);
+      const searchRes = await fetch(`${API_BASE}/students`);
       const searchJson = await searchRes.json();
 
       if (!searchJson.success) throw new Error('Could not fetch students.');
@@ -57,16 +55,16 @@ export default function ScannerScreen() {
       }
 
       // Mark the student as Present
-      const attendRes  = await fetch(`${API_BASE}/attendance`, {
-        method:  'POST',
+      const attendRes = await fetch(`${API_BASE}/attendance`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
+        body: JSON.stringify({
           records: [
             {
-              studentId:     student._id,
-              status:        'Present',
+              studentId: student._id,
+              status: 'Present',
               pointsAwarded: 10,
-              teacherNotes:  'Marked via QR scan',
+              teacherNotes: 'Marked via QR scan',
             },
           ],
         }),
@@ -179,7 +177,7 @@ export default function ScannerScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const RETICLE_SIZE = 240;
-const CORNER_SIZE  = 24;
+const CORNER_SIZE = 24;
 const CORNER_WIDTH = 4;
 
 const styles = StyleSheet.create({
@@ -193,7 +191,7 @@ const styles = StyleSheet.create({
   },
 
   // Permission screen
-  permTitle:    { color: '#e0e7ff', fontSize: 22, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
+  permTitle: { color: '#e0e7ff', fontSize: 22, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
   permSubtitle: { color: '#818cf8', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
   permBtn: {
     backgroundColor: '#6366f1',
@@ -214,7 +212,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingTop: 60,
   },
-  overlayTitle:    { color: '#fff', fontSize: 20, fontWeight: '700' },
+  overlayTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
   overlaySubtitle: { color: '#c7d2fe', fontSize: 13, marginTop: 6 },
 
   reticleRow: { flexDirection: 'row', height: RETICLE_SIZE },
@@ -233,9 +231,9 @@ const styles = StyleSheet.create({
     height: CORNER_SIZE,
     borderColor: '#6366f1',
   },
-  cornerTL: { top: 0, left: 0,  borderTopWidth: CORNER_WIDTH, borderLeftWidth: CORNER_WIDTH },
+  cornerTL: { top: 0, left: 0, borderTopWidth: CORNER_WIDTH, borderLeftWidth: CORNER_WIDTH },
   cornerTR: { top: 0, right: 0, borderTopWidth: CORNER_WIDTH, borderRightWidth: CORNER_WIDTH },
-  cornerBL: { bottom: 0, left: 0,  borderBottomWidth: CORNER_WIDTH, borderLeftWidth: CORNER_WIDTH },
+  cornerBL: { bottom: 0, left: 0, borderBottomWidth: CORNER_WIDTH, borderLeftWidth: CORNER_WIDTH },
   cornerBR: { bottom: 0, right: 0, borderBottomWidth: CORNER_WIDTH, borderRightWidth: CORNER_WIDTH },
 
   overlayBottom: {
@@ -249,8 +247,8 @@ const styles = StyleSheet.create({
 
   processingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   processingText: { color: '#fff', fontSize: 15 },
-  scannedText:    { color: '#86efac', fontSize: 14, textAlign: 'center', paddingHorizontal: 20 },
-  idleText:       { color: '#c7d2fe', fontSize: 14 },
+  scannedText: { color: '#86efac', fontSize: 14, textAlign: 'center', paddingHorizontal: 20 },
+  idleText: { color: '#c7d2fe', fontSize: 14 },
 
   resetBtn: {
     backgroundColor: 'rgba(99,102,241,0.25)',

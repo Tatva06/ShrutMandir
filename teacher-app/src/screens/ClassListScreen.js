@@ -13,17 +13,14 @@ import {
   Platform,
 } from 'react-native';
 
-const API_BASE = Platform.OS === 'web'
-  ? 'http://localhost:5000/api'
-  : 'http://10.100.58.122:5000/api';
-
+const API_BASE = 'https://shrut-mandir.vercel.app/api';
 // Per-student status options a teacher can toggle
 const STATUSES = ['Present', 'Absent', 'Late'];
 
 const STATUS_COLORS = {
   Present: { active: '#22c55e', label: '#fff' },
-  Absent:  { active: '#ef4444', label: '#fff' },
-  Late:    { active: '#f59e0b', label: '#fff' },
+  Absent: { active: '#ef4444', label: '#fff' },
+  Late: { active: '#f59e0b', label: '#fff' },
 };
 
 // ─── Sub-component: single student row ────────────────────────────────────────
@@ -73,7 +70,7 @@ function StudentRow({ student, status, onStatusChange }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ClassListScreen() {
   const [students, setStudents] = useState([]);
-  const [loading, setLoading]   = useState(true);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -86,7 +83,7 @@ export default function ClassListScreen() {
     else setLoading(true);
 
     try {
-      const res  = await fetch(`${API_BASE}/students`);
+      const res = await fetch(`${API_BASE}/students`);
       const json = await res.json();
       if (json.success) {
         setStudents(json.data);
@@ -121,11 +118,11 @@ export default function ClassListScreen() {
     const records = students
       .filter((s) => statusMap[s._id] !== null)
       .map((s) => ({
-        studentId:     s._id,
-        status:        statusMap[s._id],
+        studentId: s._id,
+        status: statusMap[s._id],
         pointsAwarded: statusMap[s._id] === 'Present' ? 10
-                     : statusMap[s._id] === 'Late'    ? 5
-                     : 0,
+          : statusMap[s._id] === 'Late' ? 5
+            : 0,
       }));
 
     if (records.length === 0) {
@@ -151,10 +148,10 @@ export default function ClassListScreen() {
   const submitRecords = async (records) => {
     setSubmitting(true);
     try {
-      const res  = await fetch(`${API_BASE}/attendance`, {
-        method:  'POST',
+      const res = await fetch(`${API_BASE}/attendance`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ records }),
+        body: JSON.stringify({ records }),
       });
       const json = await res.json();
       if (json.success) {
@@ -239,9 +236,9 @@ export default function ClassListScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container:  { flex: 1, backgroundColor: '#0f0e17' },
-  centered:   { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f0e17' },
-  loadingText:{ marginTop: 12, color: '#a5b4fc', fontSize: 15 },
+  container: { flex: 1, backgroundColor: '#0f0e17' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f0e17' },
+  loadingText: { marginTop: 12, color: '#a5b4fc', fontSize: 15 },
 
   header: {
     backgroundColor: '#1e1b4b',
@@ -251,7 +248,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#312e81',
   },
-  headerTitle:    { color: '#e0e7ff', fontSize: 20, fontWeight: '700' },
+  headerTitle: { color: '#e0e7ff', fontSize: 20, fontWeight: '700' },
   headerSubtitle: { color: '#818cf8', fontSize: 13, marginTop: 2 },
 
   list: { padding: 16, paddingBottom: 100 },
@@ -270,9 +267,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
-  studentName:  { color: '#e0e7ff', fontSize: 16, fontWeight: '600' },
-  groupLabel:   { color: '#818cf8', fontSize: 12, marginTop: 2 },
-  pointsBadge:  { color: '#fbbf24', fontSize: 13, fontWeight: '600' },
+  studentName: { color: '#e0e7ff', fontSize: 16, fontWeight: '600' },
+  groupLabel: { color: '#818cf8', fontSize: 12, marginTop: 2 },
+  pointsBadge: { color: '#fbbf24', fontSize: 13, fontWeight: '600' },
 
   toggleRow: { flexDirection: 'row', gap: 8 },
   toggleBtn: {
