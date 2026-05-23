@@ -12,7 +12,11 @@ function todayIST() {
 // Returns all students (Public for app/dashboard)
 router.get('/', async (req, res) => {
   try {
-    const students = await Student.find().populate('classId', 'className ageGroup').sort({ name: 1 });
+    const query = {};
+    if (req.query.classId) {
+      query.classId = req.query.classId;
+    }
+    const students = await Student.find(query).populate('classId', 'className ageGroup').sort({ name: 1 });
     const formatted = students.map(s => {
       const parts = (s.name || '').trim().split(/\s+/);
       return {

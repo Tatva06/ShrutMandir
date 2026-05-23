@@ -6,7 +6,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE = 'https://shrut-mandir.vercel.app/api';
+import { API_BASE } from '../config';
 
 const SCAN_COOLDOWN_MS = 1200;
 
@@ -134,11 +134,18 @@ export default function ScannerScreen({ navigation }) {
         const status = isLate ? 'Late' : 'Present';
         const pts = isLate ? 5 : 10;
 
-        await fetch(`${API_BASE}/students/${student._id}/attendance`, {
+        const res = await fetch(`${API_BASE}/students/${student._id}/attendance`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status, date: todayString(), loggedBy: teacherName }),
         });
+        const data = await res.json();
+        
+        if (!res.ok) {
+          showToast(`⚠️  ${data.message || 'Error marking attendance'}`, '#f59e0b');
+          return;
+        }
+
         showToast(
           isLate
             ? `🕐  ${student.name} — Late +${pts} pts`
@@ -185,13 +192,14 @@ export default function ScannerScreen({ navigation }) {
     setGathaSubmitting(true);
     try {
       await Promise.all(
-        items.map(g =>
-          fetch(`${API_BASE}/students/${modalStudent._id}/activity`, {
+        items.map(async g => {
+          const res = await fetch(`${API_BASE}/students/${modalStudent._id}/activity`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'Gatha', description: g.name, pointsAwarded: g.pts, date: todayString(), loggedBy: teacherName }),
-          })
-        )
+          });
+          if (!res.ok) throw new Error('Failed to save activity');
+        })
       );
       const totalPts = items.reduce((a, g) => a + g.pts, 0);
       setGathaModal(false);

@@ -4,7 +4,7 @@ import {
   SafeAreaView, StatusBar, RefreshControl, TouchableOpacity, Alert,
 } from 'react-native';
 
-const API_BASE = 'https://shrut-mandir.vercel.app/api';
+import { API_BASE } from '../config';
 
 // Returns today as 'YYYY-MM-DD' in local time
 function todayString() {

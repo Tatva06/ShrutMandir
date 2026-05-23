@@ -11,6 +11,7 @@ import ClassListScreen      from './src/screens/ClassListScreen';
 import StudentProfileScreen from './src/screens/StudentProfileScreen';
 import ScannerScreen        from './src/screens/ScannerScreen';
 import DashboardScreen      from './src/screens/DashboardScreen';
+import TeacherProfileScreen from './src/screens/TeacherProfileScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -74,26 +75,7 @@ export default function App() {
         <Stack.Screen
           name="ClassesHome"
           component={ClassesHomeScreen}
-          options={({ navigation }) => ({
-            title: '🎵 ShrutMandir',
-            headerRight: () => (
-              <TouchableOpacity
-                onPress={() => {
-                  Alert.alert(
-                    'Profile Details',
-                    `Logged in as: ${userData?.name || 'Teacher'}\nRole: ${userData?.role || 'Teacher'}\n\nDo you want to logout?`,
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Log Out', style: 'destructive', onPress: handleLogout }
-                    ]
-                  );
-                }}
-                style={{ marginRight: 4 }}
-              >
-                <Text style={{ fontSize: 26 }}>👤</Text>
-              </TouchableOpacity>
-            ),
-          })}
+          options={{ title: '🎵 ShrutMandir' }}
         />
         <Stack.Screen
           name="ClassList"
@@ -158,6 +140,15 @@ export default function App() {
               tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📊</Text>,
             }}
           />
+          <Tab.Screen
+            name="Profile"
+            options={{
+              tabBarLabel: 'Profile',
+              tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>👤</Text>,
+            }}
+          >
+            {props => <TeacherProfileScreen {...props} userData={userData} onLogout={handleLogout} />}
+          </Tab.Screen>
         </Tab.Navigator>
       )}
     </NavigationContainer>

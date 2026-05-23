@@ -5,7 +5,7 @@ import {
   ScrollView,
 } from 'react-native';
 
-const API_BASE = 'https://shrut-mandir.vercel.app/api';
+import { API_BASE } from '../config';
 
 function todayString() {
   const d    = new Date();
@@ -49,10 +49,14 @@ export default function ClassListScreen({ route, navigation }) {
       const lockJson = await lockRes.json();
 
       if (studJson.success) {
-        setStudents(studJson.data);
+        // Filter students to only show those in this specific class
+        const classStudents = studJson.data.filter(s => 
+          s.classId === classId || (s.classId && s.classId._id === classId)
+        );
+        setStudents(classStudents);
         // Init all to 'Absent' by default
         const init = {};
-        studJson.data.forEach(s => { init[s._id] = 'Absent'; });
+        classStudents.forEach(s => { init[s._id] = 'Absent'; });
         setStatusMap(init);
       }
       if (lockJson.success !== undefined) {

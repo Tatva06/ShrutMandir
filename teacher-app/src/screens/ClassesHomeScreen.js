@@ -4,7 +4,7 @@ import {
   StyleSheet, SafeAreaView, StatusBar, RefreshControl, Alert,
 } from 'react-native';
 
-const API_BASE = 'https://shrut-mandir.vercel.app/api';
+import { API_BASE } from '../config';
 
 // Age-group sort order (youngest first)
 const AGE_ORDER = ['5-10', '11-15', '16+'];

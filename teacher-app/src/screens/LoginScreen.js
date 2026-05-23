@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE = 'https://shrut-mandir.vercel.app/api';
+import { API_BASE } from '../config';
 
 export default function LoginScreen({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
