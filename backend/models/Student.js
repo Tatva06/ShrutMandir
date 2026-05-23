@@ -24,6 +24,7 @@ const studentSchema = new mongoose.Schema({
   name:         { type: String, required: true },
   phoneNumber:  { type: String },                               // Stored as string for '+91' etc.
   village:      { type: String },
+  classId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Class' }, // Assigned class
   points:       { type: Number, default: 0 },
 
   // Embedded log arrays

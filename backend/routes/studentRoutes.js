@@ -1,19 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const Student = require('../models/Student');
+const { requireAuth, requireSuperAdmin } = require('../middleware/auth');
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
-// Returns today's date as 'YYYY-MM-DD' in IST
 function todayIST() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 }
 
 // ─── GET /api/students ────────────────────────────────────────────────────────
-// Returns all students with backward-compatibility mapping for teacher-app
+// Returns all students (Public for app/dashboard)
 router.get('/', async (req, res) => {
   try {
-    const students = await Student.find().sort({ name: 1 });
-
+    const students = await Student.find().populate('classId', 'className ageGroup').sort({ name: 1 });
     const formatted = students.map(s => {
       const parts = (s.name || '').trim().split(/\s+/);
       return {
@@ -24,7 +23,8 @@ router.get('/', async (req, res) => {
         lastName: parts.slice(1).join(' ') || '',
         phoneNumber: s.phoneNumber,
         village: s.village,
-        classGroupId: { _id: s.village || 'default', name: s.village || 'No Village' },
+        classId: s.classId, // Now explicitly assigned
+        classGroupId: { _id: s.village || 'default', name: s.village || 'No Village' }, // Backward compat
         points: s.points,
         totalPoints: s.points,
         qrId: s.rollNo,
@@ -32,109 +32,165 @@ router.get('/', async (req, res) => {
         activityLogs: s.activityLogs,
       };
     });
-
     res.status(200).json({ success: true, count: formatted.length, data: formatted });
   } catch (err) {
-    console.error('Error fetching students:', err.message);
     res.status(500).json({ success: false, message: 'Server error fetching students.' });
   }
 });
 
-// ─── GET /api/students/:id ────────────────────────────────────────────────────
-// Returns a single student with full logs
-router.get('/:id', async (req, res) => {
+// ─── POST /api/students ───────────────────────────────────────────────────────
+// Add single student (Admin only)
+router.post('/', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id);
-    if (!student) {
-      return res.status(404).json({ success: false, message: 'Student not found.' });
-    }
+    const { rollNo, name, phoneNumber, village, classId, points } = req.body;
+    if (!rollNo || !name) return res.status(400).json({ success: false, message: 'rollNo and name are required' });
+
+    const student = await Student.create({
+      rollNo, name, phoneNumber, village, classId, points: points || 0
+    });
+    res.status(201).json({ success: true, data: student });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error creating student', error: err.message });
+  }
+});
+
+// ─── PUT /api/students/:id ────────────────────────────────────────────────────
+// Update student profile (Admin only)
+router.put('/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const student = await Student.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!student) return res.status(404).json({ success: false, message: 'Not found' });
     res.status(200).json({ success: true, data: student });
   } catch (err) {
-    console.error('Error fetching student:', err.message);
+    res.status(500).json({ success: false, message: 'Error updating student', error: err.message });
+  }
+});
+
+// ─── GET /api/students/:id ────────────────────────────────────────────────────
+// Returns a single student with paginated logs (limits to 50 to prevent crash)
+router.get('/:id', async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id).populate('classId', 'className ageGroup');
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
+
+    // Pagination for logs: return only last 50 by default
+    const limit = parseInt(req.query.limit) || 50;
+    
+    // Create a plain object to avoid modifying the mongoose document
+    const studentData = student.toObject();
+    
+    // Sort descending by date and limit
+    studentData.attendanceLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+    studentData.activityLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    studentData.attendanceLogs = studentData.attendanceLogs.slice(0, limit);
+    studentData.activityLogs = studentData.activityLogs.slice(0, limit);
+
+    res.status(200).json({ success: true, data: studentData });
+  } catch (err) {
     res.status(500).json({ success: false, message: 'Server error fetching student.' });
   }
 });
 
 // ─── POST /api/students/:id/attendance ───────────────────────────────────────
-// Body: { status: 'Present'|'Absent'|'Late', date: 'YYYY-MM-DD' }
-// Appends to attendanceLogs and updates total points
 router.post('/:id/attendance', async (req, res) => {
   try {
     const { status, date } = req.body;
     const logDate = date || todayIST();
 
-    if (!['Present', 'Absent', 'Late'].includes(status)) {
-      return res.status(400).json({ success: false, message: 'Invalid status value.' });
-    }
-
-    // Auto point awards
     const pointsAwarded = status === 'Present' ? 10 : status === 'Late' ? 5 : 0;
 
     const student = await Student.findByIdAndUpdate(
       req.params.id,
       {
-        $push: {
-          attendanceLogs: { date: logDate, status, pointsAwarded, timestamp: new Date() },
-        },
+        $push: { attendanceLogs: { date: logDate, status, pointsAwarded, timestamp: new Date() } },
         $inc: { points: pointsAwarded },
       },
       { new: true }
     );
 
-    if (!student) {
-      return res.status(404).json({ success: false, message: 'Student not found.' });
-    }
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
 
-    res.status(201).json({
-      success: true,
-      message: `Attendance marked: ${status} (+${pointsAwarded} pts)`,
-      data: { status, pointsAwarded, newTotal: student.points },
-    });
+    res.status(201).json({ success: true, message: `Attendance marked: ${status}`, data: { status, pointsAwarded, newTotal: student.points } });
   } catch (err) {
-    console.error('Error saving attendance:', err.message);
     res.status(500).json({ success: false, message: 'Server error saving attendance.' });
   }
 });
 
+// ─── DELETE /api/students/:id/attendance/:logId ───────────────────────────────
+// Atomic Point Sync: deleting an attendance log subtracts its points
+router.delete('/:id/attendance/:logId', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+
+    const logIndex = student.attendanceLogs.findIndex(l => l._id.toString() === req.params.logId);
+    if (logIndex === -1) return res.status(404).json({ success: false, message: 'Log not found' });
+
+    const ptsToSubtract = student.attendanceLogs[logIndex].pointsAwarded || 0;
+    
+    // Atomically pull the log and decrement points
+    const updatedStudent = await Student.findByIdAndUpdate(
+      req.params.id,
+      { 
+        $pull: { attendanceLogs: { _id: req.params.logId } },
+        $inc: { points: -ptsToSubtract }
+      },
+      { new: true }
+    );
+
+    res.status(200).json({ success: true, message: 'Attendance log deleted and points synced.', newTotal: updatedStudent.points });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+});
+
 // ─── POST /api/students/:id/activity ─────────────────────────────────────────
-// Body: { type: 'Gatha'|'Aaradhana'|'Conduct', description, pointsAwarded, date }
-// Appends to activityLogs and updates total points
 router.post('/:id/activity', async (req, res) => {
   try {
     const { type, description, pointsAwarded, date } = req.body;
     const logDate = date || todayIST();
 
-    if (!['Gatha', 'Aaradhana', 'Conduct'].includes(type)) {
-      return res.status(400).json({ success: false, message: 'Invalid activity type.' });
-    }
-
-    if (typeof pointsAwarded !== 'number') {
-      return res.status(400).json({ success: false, message: 'pointsAwarded must be a number.' });
-    }
-
     const student = await Student.findByIdAndUpdate(
       req.params.id,
       {
-        $push: {
-          activityLogs: { date: logDate, type, description, pointsAwarded, loggedAt: new Date() },
-        },
+        $push: { activityLogs: { date: logDate, type, description, pointsAwarded, loggedAt: new Date() } },
         $inc: { points: pointsAwarded },
       },
       { new: true }
     );
 
-    if (!student) {
-      return res.status(404).json({ success: false, message: 'Student not found.' });
-    }
-
-    res.status(201).json({
-      success: true,
-      message: `Activity logged: ${description} (${pointsAwarded > 0 ? '+' : ''}${pointsAwarded} pts)`,
-      data: { type, description, pointsAwarded, newTotal: student.points },
-    });
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
+    res.status(201).json({ success: true, message: `Activity logged`, data: { newTotal: student.points } });
   } catch (err) {
-    console.error('Error saving activity:', err.message);
     res.status(500).json({ success: false, message: 'Server error saving activity.' });
+  }
+});
+
+// ─── DELETE /api/students/:id/activity/:logId ─────────────────────────────────
+// Atomic Point Sync: deleting an activity log subtracts its points
+router.delete('/:id/activity/:logId', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+
+    const logIndex = student.activityLogs.findIndex(l => l._id.toString() === req.params.logId);
+    if (logIndex === -1) return res.status(404).json({ success: false, message: 'Log not found' });
+
+    const ptsToSubtract = student.activityLogs[logIndex].pointsAwarded || 0;
+    
+    const updatedStudent = await Student.findByIdAndUpdate(
+      req.params.id,
+      { 
+        $pull: { activityLogs: { _id: req.params.logId } },
+        $inc: { points: -ptsToSubtract }
+      },
+      { new: true }
+    );
+
+    res.status(200).json({ success: true, message: 'Activity log deleted and points synced.', newTotal: updatedStudent.points });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error.' });
   }
 });
 
