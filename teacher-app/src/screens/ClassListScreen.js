@@ -4,6 +4,7 @@ import {
   StyleSheet, SafeAreaView, StatusBar, RefreshControl, Alert,
   ScrollView,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_BASE } from '../config';
 
@@ -100,7 +101,6 @@ export default function ClassListScreen({ route, navigation }) {
     setSubmitting(true);
     try {
       // Get teacher name from AsyncStorage
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const userDataStr = await AsyncStorage.getItem('userData');
       const teacherName = userDataStr ? JSON.parse(userDataStr).name : 'Unknown Teacher';
 
@@ -118,7 +118,12 @@ export default function ClassListScreen({ route, navigation }) {
       });
       
       if (!bulkRes.ok) {
-        throw new Error('Bulk API failed');
+        let errMessage = 'Bulk API failed';
+        try {
+          const errJson = await bulkRes.json();
+          if (errJson.message) errMessage = errJson.message;
+        } catch (e) {}
+        throw new Error(errMessage);
       }
 
       // Lock attendance for this class/date
@@ -134,7 +139,7 @@ export default function ClassListScreen({ route, navigation }) {
       fetchAll(true);
     } catch (err) {
       console.error(err);
-      Alert.alert('Error', 'Could not submit attendance. Try again.');
+      Alert.alert('Error', err.message || 'Could not submit attendance. Try again.');
     } finally {
       setSubmitting(false);
     }
