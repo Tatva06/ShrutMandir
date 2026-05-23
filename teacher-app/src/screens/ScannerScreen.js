@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Modal, ScrollView, TextInput, Animated,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE = 'https://shrut-mandir.vercel.app/api';
 
@@ -39,6 +40,7 @@ export default function ScannerScreen({ navigation }) {
   const [scanned, setScanned] = useState(false);
   const [processing, setProcessing] = useState(false);
   const cooldownRef = useRef(null);
+  const [teacherName, setTeacherName] = useState('Unknown Teacher');
 
   // Toast state
   const [toast, setToast] = useState(null);  // { msg, color }
@@ -52,7 +54,21 @@ export default function ScannerScreen({ navigation }) {
   const [customPts, setCustomPts] = useState('');
   const [gathaSubmitting, setGathaSubmitting] = useState(false);
 
-  useEffect(() => () => clearTimeout(cooldownRef.current), []);
+  useEffect(() => {
+    const loadTeacherData = async () => {
+      try {
+        const userDataStr = await AsyncStorage.getItem('userData');
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          setTeacherName(userData.name || 'Unknown Teacher');
+        }
+      } catch (err) {
+        console.error('AsyncStorage read error:', err);
+      }
+    };
+    loadTeacherData();
+    return () => clearTimeout(cooldownRef.current);
+  }, []);
 
   // ── Toast helper ─────────────────────────────────────────────────────────
   const showToast = (msg, color = '#22c55e') => {
@@ -107,7 +123,7 @@ export default function ScannerScreen({ navigation }) {
         await fetch(`${API_BASE}/students/${student._id}/attendance`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status, date: todayString() }),
+          body: JSON.stringify({ status, date: todayString(), loggedBy: teacherName }),
         });
         showToast(
           isLate
@@ -159,7 +175,7 @@ export default function ScannerScreen({ navigation }) {
           fetch(`${API_BASE}/students/${modalStudent._id}/activity`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'Gatha', description: g.name, pointsAwarded: g.pts, date: todayString() }),
+            body: JSON.stringify({ type: 'Gatha', description: g.name, pointsAwarded: g.pts, date: todayString(), loggedBy: teacherName }),
           })
         )
       );

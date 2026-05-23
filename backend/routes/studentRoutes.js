@@ -22,6 +22,12 @@ router.get('/', async (req, res) => {
         firstName: parts[0] || '',
         lastName: parts.slice(1).join(' ') || '',
         phoneNumber: s.phoneNumber,
+        altPhone: s.altPhone || '',
+        fatherName: s.fatherName || '',
+        motherName: s.motherName || '',
+        age: s.age || null,
+        gender: s.gender || '',
+        dob: s.dob || '',
         village: s.village,
         classId: s.classId, // Now explicitly assigned
         classGroupId: { _id: s.village || 'default', name: s.village || 'No Village' }, // Backward compat
@@ -55,6 +61,12 @@ router.get('/by-roll/:rollNo', async (req, res) => {
       firstName: parts[0] || '',
       lastName: parts.slice(1).join(' ') || '',
       phoneNumber: student.phoneNumber,
+      altPhone: student.altPhone || '',
+      fatherName: student.fatherName || '',
+      motherName: student.motherName || '',
+      age: student.age || null,
+      gender: student.gender || '',
+      dob: student.dob || '',
       village: student.village,
       classId: student.classId,
       classGroupId: { _id: student.village || 'default', name: student.village || 'No Village' },
@@ -76,11 +88,11 @@ router.get('/by-roll/:rollNo', async (req, res) => {
 // Add single student (Admin only)
 router.post('/', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const { rollNo, name, phoneNumber, village, classId, points } = req.body;
+    const { rollNo, name, phoneNumber, altPhone, fatherName, motherName, age, gender, dob, village, classId, points } = req.body;
     if (!rollNo || !name) return res.status(400).json({ success: false, message: 'rollNo and name are required' });
 
     const student = await Student.create({
-      rollNo, name, phoneNumber, village, classId, points: points || 0
+      rollNo, name, phoneNumber, altPhone, fatherName, motherName, age, gender, dob, village, classId, points: points || 0
     });
     res.status(201).json({ success: true, data: student });
   } catch (err) {
@@ -129,7 +141,7 @@ router.get('/:id', async (req, res) => {
 // ─── POST /api/students/:id/attendance ───────────────────────────────────────
 router.post('/:id/attendance', async (req, res) => {
   try {
-    const { status, date } = req.body;
+    const { status, date, loggedBy } = req.body;
     const logDate = date || todayIST();
 
     const pointsAwarded = status === 'Present' ? 10 : status === 'Late' ? 5 : 0;
@@ -137,7 +149,7 @@ router.post('/:id/attendance', async (req, res) => {
     const student = await Student.findByIdAndUpdate(
       req.params.id,
       {
-        $push: { attendanceLogs: { date: logDate, status, pointsAwarded, timestamp: new Date() } },
+        $push: { attendanceLogs: { date: logDate, status, pointsAwarded, timestamp: new Date(), loggedBy } },
         $inc: { points: pointsAwarded },
       },
       { new: true }
@@ -182,13 +194,13 @@ router.delete('/:id/attendance/:logId', requireAuth, requireSuperAdmin, async (r
 // ─── POST /api/students/:id/activity ─────────────────────────────────────────
 router.post('/:id/activity', async (req, res) => {
   try {
-    const { type, description, pointsAwarded, date } = req.body;
+    const { type, description, pointsAwarded, date, loggedBy } = req.body;
     const logDate = date || todayIST();
 
     const student = await Student.findByIdAndUpdate(
       req.params.id,
       {
-        $push: { activityLogs: { date: logDate, type, description, pointsAwarded, loggedAt: new Date() } },
+        $push: { activityLogs: { date: logDate, type, description, pointsAwarded, loggedAt: new Date(), loggedBy } },
         $inc: { points: pointsAwarded },
       },
       { new: true }

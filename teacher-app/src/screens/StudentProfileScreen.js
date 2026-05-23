@@ -4,6 +4,7 @@ import {
   StyleSheet, SafeAreaView, StatusBar, RefreshControl, Alert,
   Modal, TextInput, Linking,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE = 'https://shrut-mandir.vercel.app/api';
 
@@ -48,6 +49,22 @@ export default function StudentProfileScreen({ route, navigation }) {
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab,  setActiveTab]  = useState('Attendance'); // 'Attendance' | 'Activity'
+  const [teacherName, setTeacherName] = useState('Unknown Teacher');
+
+  useEffect(() => {
+    const loadTeacherData = async () => {
+      try {
+        const userDataStr = await AsyncStorage.getItem('userData');
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          setTeacherName(userData.name || 'Unknown Teacher');
+        }
+      } catch (err) {
+        console.error('AsyncStorage read error:', err);
+      }
+    };
+    loadTeacherData();
+  }, []);
 
   // Log Activity modal
   const [logModal,      setLogModal]      = useState(false);
@@ -112,7 +129,7 @@ export default function StudentProfileScreen({ route, navigation }) {
           fetch(`${API_BASE}/students/${student._id}/activity`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ ...item, date: todayString() }),
+            body:    JSON.stringify({ ...item, date: todayString(), loggedBy: teacherName }),
           })
         )
       );
@@ -201,7 +218,10 @@ export default function StudentProfileScreen({ route, navigation }) {
                     <Text style={styles.logIcon}>{cfg.icon}</Text>
                     <View style={styles.logInfo}>
                       <Text style={styles.logDate}>{formatDate(log.date)}</Text>
-                      <Text style={[styles.logStatus, { color: cfg.text }]}>{log.status}  {log.pointsAwarded > 0 ? `+${log.pointsAwarded} pts` : ''}</Text>
+                      <Text style={[styles.logStatus, { color: cfg.text }]}>
+                        {log.status}  {log.pointsAwarded > 0 ? `+${log.pointsAwarded} pts` : ''}
+                        {log.loggedBy && <Text style={{ color: '#818cf8', fontStyle: 'italic', fontSize: 11 }}>  by {log.loggedBy}</Text>}
+                      </Text>
                     </View>
                   </View>
                 );
@@ -221,6 +241,7 @@ export default function StudentProfileScreen({ route, navigation }) {
                     <View style={styles.logInfo}>
                       <Text style={styles.logDate}>{formatDate(log.date)}</Text>
                       <Text style={styles.logDesc}>{log.description}</Text>
+                      {log.loggedBy && <Text style={{ color: '#818cf8', fontStyle: 'italic', fontSize: 11, marginTop: 2 }}>by {log.loggedBy}</Text>}
                     </View>
                     <Text style={{ color: pts >= 0 ? '#22c55e' : '#ef4444', fontWeight: '700', fontSize: 13 }}>
                       {pts >= 0 ? `+${pts}` : pts} pts

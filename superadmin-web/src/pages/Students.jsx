@@ -130,6 +130,7 @@ export default function Students() {
       {selectedStudentId && (
         <StudentProfileModal 
           studentId={selectedStudentId} 
+          classes={classes}
           onClose={() => setSelectedStudentId(null)}
           onUpdate={fetchData}
         />
@@ -162,7 +163,19 @@ export default function Students() {
 // ─── Modals ───────────────────────────────────────────────────────────────────
 
 function AddStudentModal({ classes, onClose, onSuccess }) {
-  const [formData, setFormData] = useState({ name: '', rollNo: '', classId: '', phoneNumber: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    rollNo: '',
+    classId: '',
+    phoneNumber: '',
+    altPhone: '',
+    fatherName: '',
+    motherName: '',
+    age: '',
+    gender: 'Male',
+    dob: '',
+    village: ''
+  });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -180,26 +193,77 @@ function AddStudentModal({ classes, onClose, onSuccess }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
-      <div className="glass-card" style={{ width: 450, padding: '2rem', position: 'relative' }}>
+      <div className="glass-card" style={{ width: 600, padding: '2rem', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
         <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24}/></button>
         <h2 style={{ marginBottom: '1.5rem' }}>Add New Student</h2>
         
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Full Name</label>
-            <input type="text" className="input-field" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Full Name *</label>
+              <input type="text" className="input-field" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. Aarav Mehta" />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>QR / Roll No *</label>
+              <input type="text" className="input-field" required value={formData.rollNo} onChange={e => setFormData({...formData, rollNo: e.target.value})} placeholder="e.g. 101" />
+            </div>
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>QR / Roll No</label>
-            <input type="text" className="input-field" required value={formData.rollNo} onChange={e => setFormData({...formData, rollNo: e.target.value})} placeholder="e.g. 101" />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Father's Name</label>
+              <input type="text" className="input-field" value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} placeholder="e.g. Rajesh Bhai" />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Mother's Name</label>
+              <input type="text" className="input-field" value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} placeholder="e.g. Rekha Ben" />
+            </div>
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Assign Class</label>
-            <select className="input-field" value={formData.classId} onChange={e => setFormData({...formData, classId: e.target.value})} style={{ appearance: 'none' }}>
-              <option value="">Select a Class...</option>
-              {classes.map(c => <option key={c._id} value={c._id}>{c.className} ({c.ageGroup})</option>)}
-            </select>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Primary Phone</label>
+              <input type="text" className="input-field" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} placeholder="e.g. +91 9825..." />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Alternative Phone</label>
+              <input type="text" className="input-field" value={formData.altPhone} onChange={e => setFormData({...formData, altPhone: e.target.value})} placeholder="e.g. Landline or mother's no" />
+            </div>
           </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Age</label>
+              <input type="number" className="input-field" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} placeholder="e.g. 12" />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Gender</label>
+              <select className="input-field" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} style={{ appearance: 'none' }}>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Date of Birth</label>
+              <input type="date" className="input-field" value={formData.dob} onChange={e => setFormData({...formData, dob: e.target.value})} />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Village / Area</label>
+              <input type="text" className="input-field" value={formData.village} onChange={e => setFormData({...formData, village: e.target.value})} placeholder="e.g. Palitana" />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Assign Class</label>
+              <select className="input-field" value={formData.classId} onChange={e => setFormData({...formData, classId: e.target.value})} style={{ appearance: 'none' }}>
+                <option value="">Select a Class...</option>
+                {classes.map(c => <option key={c._id} value={c._id}>{c.className} ({c.ageGroup})</option>)}
+              </select>
+            </div>
+          </div>
+
           <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem' }} disabled={loading}>
             {loading ? 'Saving...' : 'Add Student'}
           </button>
@@ -209,8 +273,25 @@ function AddStudentModal({ classes, onClose, onSuccess }) {
   );
 }
 
-function StudentProfileModal({ studentId, onClose, onUpdate }) {
+function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
   const [profile, setProfile] = useState(null);
+  const [activeTab, setActiveTab] = useState('logs'); // 'logs' or 'edit'
+  
+  // Edit Form state
+  const [editForm, setEditForm] = useState({
+    name: '',
+    rollNo: '',
+    phoneNumber: '',
+    altPhone: '',
+    fatherName: '',
+    motherName: '',
+    age: '',
+    gender: 'Male',
+    dob: '',
+    village: '',
+    classId: ''
+  });
+  const [saving, setSaving] = useState(false);
   
   useEffect(() => {
     fetchProfile();
@@ -218,12 +299,41 @@ function StudentProfileModal({ studentId, onClose, onUpdate }) {
 
   const fetchProfile = async () => {
     try {
-      // Fetches paginated logs
       const res = await api.get(`/students/${studentId}`);
-      setProfile(res.data.data);
+      const data = res.data.data;
+      setProfile(data);
+      setEditForm({
+        name: data.name || '',
+        rollNo: data.rollNo || '',
+        phoneNumber: data.phoneNumber || '',
+        altPhone: data.altPhone || '',
+        fatherName: data.fatherName || '',
+        motherName: data.motherName || '',
+        age: data.age || '',
+        gender: data.gender || 'Male',
+        dob: data.dob || '',
+        village: data.village || '',
+        classId: data.classId?._id || ''
+      });
     } catch (err) {
       alert('Error fetching profile');
       onClose();
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.put(`/students/${studentId}`, editForm);
+      alert('Student details updated successfully!');
+      fetchProfile();
+      onUpdate();
+      setActiveTab('logs');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error updating student profile');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -256,57 +366,155 @@ function StudentProfileModal({ studentId, onClose, onUpdate }) {
       <div className="glass-card" style={{ width: 800, maxHeight: '90vh', padding: '2rem', display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24}/></button>
         
-        <div style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)' }}>{profile.name}</h2>
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-            <span className="badge badge-indigo">{profile.classId?.className || profile.village}</span>
-            <span className="badge badge-green">Total Score: {profile.points} pts</span>
+        <div style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)' }}>{profile.name}</h2>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+              <span className="badge badge-indigo">{profile.classId?.className || profile.village || 'Unassigned'}</span>
+              <span className="badge badge-green">Total Score: {profile.points} pts</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginRight: '2.5rem' }}>
+            <button 
+              onClick={() => setActiveTab('logs')}
+              className={`btn ${activeTab === 'logs' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
+            >
+              Activity Logs
+            </button>
+            <button 
+              onClick={() => setActiveTab('edit')}
+              className={`btn ${activeTab === 'edit' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
+            >
+              Edit Details & Class Transfer
+            </button>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', overflowY: 'auto', paddingRight: '1rem' }}>
-          
-          {/* Activity Logs */}
-          <div>
-            <h3 style={{ marginBottom: '1rem', color: 'var(--text-sub)' }}>Recent Activities</h3>
-            {profile.activityLogs.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No activity logs.</p> : null}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {profile.activityLogs.map(log => (
-                <div key={log._id} style={{ backgroundColor: 'var(--bg-dark)', padding: '1rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <p style={{ fontSize: '0.9rem', fontWeight: 600 }}>{log.type}: {log.description}</p>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(log.date).toLocaleDateString()} • <span style={{color: 'var(--accent-green)'}}>+{log.pointsAwarded} pts</span></p>
+        {activeTab === 'logs' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', overflowY: 'auto', paddingRight: '1rem', flex: 1 }}>
+            
+            {/* Activity Logs */}
+            <div>
+              <h3 style={{ marginBottom: '1rem', color: 'var(--text-sub)' }}>Recent Activities</h3>
+              {profile.activityLogs.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No activity logs.</p> : null}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {profile.activityLogs.map(log => (
+                  <div key={log._id} style={{ backgroundColor: 'var(--bg-dark)', padding: '1rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ fontSize: '0.9rem', fontWeight: 600 }}>{log.type}: {log.description}</p>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {new Date(log.date).toLocaleDateString()} • <span style={{color: 'var(--accent-green)'}}>+{log.pointsAwarded} pts</span>
+                        {log.loggedBy && <span style={{ color: 'var(--accent-indigo)', fontStyle: 'italic', marginLeft: 8 }}>by {log.loggedBy}</span>}
+                      </p>
+                    </div>
+                    <button onClick={() => deleteActivityLog(log._id)} className="btn btn-danger" style={{ padding: '0.5rem' }} title="Delete log & Sync Points">
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                  <button onClick={() => deleteActivityLog(log._id)} className="btn btn-danger" style={{ padding: '0.5rem' }} title="Delete log & Sync Points">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Attendance Logs */}
-          <div>
-            <h3 style={{ marginBottom: '1rem', color: 'var(--text-sub)' }}>Recent Attendance</h3>
-            {profile.attendanceLogs.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No attendance logs.</p> : null}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {profile.attendanceLogs.map(log => (
-                <div key={log._id} style={{ backgroundColor: 'var(--bg-dark)', padding: '1rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span className={`badge ${log.status === 'Present' ? 'badge-green' : log.status === 'Late' ? 'badge-amber' : 'badge-red'}`}>
-                      {log.status}
-                    </span>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>{new Date(log.date).toLocaleDateString()} • <span style={{color: 'var(--accent-green)'}}>+{log.pointsAwarded} pts</span></p>
+            {/* Attendance Logs */}
+            <div>
+              <h3 style={{ marginBottom: '1rem', color: 'var(--text-sub)' }}>Recent Attendance</h3>
+              {profile.attendanceLogs.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No attendance logs.</p> : null}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {profile.attendanceLogs.map(log => (
+                  <div key={log._id} style={{ backgroundColor: 'var(--bg-dark)', padding: '1rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span className={`badge ${log.status === 'Present' ? 'badge-green' : log.status === 'Late' ? 'badge-amber' : 'badge-red'}`}>
+                        {log.status}
+                      </span>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                        {new Date(log.date).toLocaleDateString()} • <span style={{color: 'var(--accent-green)'}}>+{log.pointsAwarded} pts</span>
+                        {log.loggedBy && <span style={{ color: 'var(--accent-indigo)', fontStyle: 'italic', marginLeft: 8 }}>by {log.loggedBy}</span>}
+                      </p>
+                    </div>
+                    <button onClick={() => deleteAttendanceLog(log._id)} className="btn btn-danger" style={{ padding: '0.5rem' }} title="Delete record">
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                  <button onClick={() => deleteAttendanceLog(log._id)} className="btn btn-danger" style={{ padding: '0.5rem' }} title="Delete record">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
 
-        </div>
+          </div>
+        ) : (
+          <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: '1rem', flex: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Full Name</label>
+                <input type="text" className="input-field" required value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>QR / Roll No</label>
+                <input type="text" className="input-field" required value={editForm.rollNo} onChange={e => setEditForm({...editForm, rollNo: e.target.value})} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Father's Name</label>
+                <input type="text" className="input-field" value={editForm.fatherName} onChange={e => setEditForm({...editForm, fatherName: e.target.value})} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Mother's Name</label>
+                <input type="text" className="input-field" value={editForm.motherName} onChange={e => setEditForm({...editForm, motherName: e.target.value})} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Primary Phone</label>
+                <input type="text" className="input-field" value={editForm.phoneNumber} onChange={e => setEditForm({...editForm, phoneNumber: e.target.value})} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Alternative Phone</label>
+                <input type="text" className="input-field" value={editForm.altPhone} onChange={e => setEditForm({...editForm, altPhone: e.target.value})} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '1.2rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Age</label>
+                <input type="number" className="input-field" value={editForm.age} onChange={e => setEditForm({...editForm, age: e.target.value})} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Gender</label>
+                <select className="input-field" value={editForm.gender} onChange={e => setEditForm({...editForm, gender: e.target.value})} style={{ appearance: 'none' }}>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Date of Birth</label>
+                <input type="date" className="input-field" value={editForm.dob} onChange={e => setEditForm({...editForm, dob: e.target.value})} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Village / Area</label>
+                <input type="text" className="input-field" value={editForm.village} onChange={e => setEditForm({...editForm, village: e.target.value})} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)', fontWeight: 600, color: 'var(--accent-indigo)' }}>Transfer Class (Class Assignment)</label>
+                <select className="input-field" value={editForm.classId} onChange={e => setEditForm({...editForm, classId: e.target.value})} style={{ appearance: 'none', borderColor: 'var(--accent-indigo)', borderWidth: 1.5 }}>
+                  <option value="">Select Class to Transfer...</option>
+                  {classes.map(c => <option key={c._id} value={c._id}>{c.className} ({c.ageGroup})</option>)}
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', alignSelf: 'flex-end', padding: '0.75rem 2rem' }} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Student Changes & Transfer Class'}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
