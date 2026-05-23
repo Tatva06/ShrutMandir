@@ -76,8 +76,14 @@ export default function Settings() {
           </div>
           
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Late Cutoff Time (24H)</label>
+            <label 
+              htmlFor="lateCutoffTime"
+              style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}
+            >
+              Late Cutoff Time (24H)
+            </label>
             <input 
+              id="lateCutoffTime"
               type="time" 
               className="input-field" 
               value={settings.lateCutoffTime} 
@@ -96,14 +102,19 @@ export default function Settings() {
               <List size={20} color="var(--accent-indigo)" />
               <h2 style={{ fontSize: '1.2rem', margin: 0 }}>Dynamic Gatha List</h2>
             </div>
-            <button onClick={addGatha} className="btn btn-secondary" style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}>
+            <button 
+              type="button"
+              onClick={addGatha} 
+              className="btn btn-secondary" 
+              style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
+            >
               <Plus size={14} /> Add Gatha
             </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {settings.gathaList.map((gatha, index) => (
-              <div key={index} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div key={gatha._id || gatha.name || `new-${index}`} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <div style={{ flex: 2 }}>
                   <input 
                     type="text" 
@@ -122,7 +133,13 @@ export default function Settings() {
                     placeholder="Points"
                   />
                 </div>
-                <button onClick={() => removeGatha(index)} className="btn btn-danger" style={{ padding: '0.6rem' }} title="Remove Gatha">
+                <button 
+                  type="button"
+                  onClick={() => removeGatha(index)} 
+                  className="btn btn-danger" 
+                  style={{ padding: '0.6rem' }} 
+                  title="Remove Gatha"
+                >
                   <Trash2 size={16} />
                 </button>
               </div>

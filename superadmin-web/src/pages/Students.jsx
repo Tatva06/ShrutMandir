@@ -57,13 +57,26 @@ export default function Students() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h1>Student Management</h1>
           <div style={{ display: 'flex', gap: '1rem' }}>
-            <button onClick={() => window.print()} className="btn btn-secondary" title="Print QR Code ID Cards">
+            <button 
+              type="button"
+              onClick={() => window.print()} 
+              className="btn btn-secondary" 
+              title="Print QR Code ID Cards"
+            >
               <Printer size={16} /> Export ID Cards
             </button>
-            <button onClick={exportCSV} className="btn btn-secondary">
+            <button 
+              type="button"
+              onClick={exportCSV} 
+              className="btn btn-secondary"
+            >
               <Download size={16} /> Export CSV
             </button>
-            <button onClick={() => setAddModalOpen(true)} className="btn btn-primary">
+            <button 
+              type="button"
+              onClick={() => setAddModalOpen(true)} 
+              className="btn btn-primary"
+            >
               <Plus size={16} /> Add Student
             </button>
           </div>
@@ -74,7 +87,7 @@ export default function Students() {
           <Search size={18} color="var(--text-sub)" />
           <input 
             type="text" 
-            placeholder="Search by name or class..." 
+            placeholder="Search by name or class…" 
             style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '1rem', outline: 'none' }}
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -94,7 +107,7 @@ export default function Students() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Loading...</td></tr>
+              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Loading…</td></tr>
             ) : filteredStudents.length === 0 ? (
               <tr><td colSpan="4" style={{ textAlign: 'center' }}>No students found</td></tr>
             ) : (
@@ -105,6 +118,7 @@ export default function Students() {
                   <td style={{ color: 'var(--accent-green)', fontWeight: 700 }}>{student.points} pts</td>
                   <td>
                     <button 
+                      type="button"
                       onClick={() => setSelectedStudentId(student._id)}
                       className="btn btn-secondary" 
                       style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
@@ -194,7 +208,7 @@ function AddStudentModal({ classes, onClose, onSuccess }) {
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
       <div className="glass-card" style={{ width: 600, padding: '2rem', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24}/></button>
+        <button type="button" onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24}/></button>
         <h2 style={{ marginBottom: '1.5rem' }}>Add New Student</h2>
         
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -364,7 +378,7 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
       <div className="glass-card" style={{ width: 800, maxHeight: '90vh', padding: '2rem', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24}/></button>
+        <button type="button" onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24}/></button>
         
         <div style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -376,6 +390,7 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', marginRight: '2.5rem' }}>
             <button 
+              type="button"
               onClick={() => setActiveTab('logs')}
               className={`btn ${activeTab === 'logs' ? 'btn-primary' : 'btn-secondary'}`}
               style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
@@ -383,6 +398,7 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
               Activity Logs
             </button>
             <button 
+              type="button"
               onClick={() => setActiveTab('edit')}
               className={`btn ${activeTab === 'edit' ? 'btn-primary' : 'btn-secondary'}`}
               style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
@@ -409,7 +425,7 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
                         {log.loggedBy && <span style={{ color: 'var(--accent-indigo)', fontStyle: 'italic', marginLeft: 8 }}>by {log.loggedBy}</span>}
                       </p>
                     </div>
-                    <button onClick={() => deleteActivityLog(log._id)} className="btn btn-danger" style={{ padding: '0.5rem' }} title="Delete log & Sync Points">
+                    <button type="button" onClick={() => deleteActivityLog(log._id)} className="btn btn-danger" style={{ padding: '0.5rem' }} title="Delete log & Sync Points">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -433,7 +449,7 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
                         {log.loggedBy && <span style={{ color: 'var(--accent-indigo)', fontStyle: 'italic', marginLeft: 8 }}>by {log.loggedBy}</span>}
                       </p>
                     </div>
-                    <button onClick={() => deleteAttendanceLog(log._id)} className="btn btn-danger" style={{ padding: '0.5rem' }} title="Delete record">
+                    <button type="button" onClick={() => deleteAttendanceLog(log._id)} className="btn btn-danger" style={{ padding: '0.5rem' }} title="Delete record">
                       <Trash2 size={14} />
                     </button>
                   </div>

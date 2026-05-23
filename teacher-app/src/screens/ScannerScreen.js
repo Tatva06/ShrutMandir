@@ -8,21 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE = 'https://shrut-mandir.vercel.app/api';
 
-// ── Hardcoded late cutoff: 8:15 AM ──────────────────────────────────────────
-const LATE_HOUR = 8;
-const LATE_MINUTE = 15;
-
 const SCAN_COOLDOWN_MS = 1200;
-
-// ── Pre-defined Gatha list ───────────────────────────────────────────────────
-const GATHA_LIST = [
-  { name: 'Navkar Mantra', pts: 10 },
-  { name: 'Logassa Sutra', pts: 20 },
-  { name: 'Uvasaggaharam Stotra', pts: 20 },
-  { name: 'Bhaktamar Stotra', pts: 50 },
-  { name: 'Namutthunam Sutra', pts: 15 },
-  { name: 'Aarti', pts: 10 },
-];
 
 const MODES = ['Attendance', 'Gatha', 'General'];
 
@@ -41,6 +27,17 @@ export default function ScannerScreen({ navigation }) {
   const [processing, setProcessing] = useState(false);
   const cooldownRef = useRef(null);
   const [teacherName, setTeacherName] = useState('Unknown Teacher');
+  
+  // Dynamic Settings states (initialized with standard defaults)
+  const [gathaList, setGathaList] = useState([
+    { name: 'Navkar Mantra', pts: 10 },
+    { name: 'Logassa Sutra', pts: 20 },
+    { name: 'Uvasaggaharam Stotra', pts: 20 },
+    { name: 'Bhaktamar Stotra', pts: 50 },
+    { name: 'Namutthunam Sutra', pts: 15 },
+    { name: 'Aarti', pts: 10 }
+  ]);
+  const [lateCutoff, setLateCutoff] = useState({ hour: 9, minute: 15 });
 
   // Toast state
   const [toast, setToast] = useState(null);  // { msg, color }
@@ -55,18 +52,35 @@ export default function ScannerScreen({ navigation }) {
   const [gathaSubmitting, setGathaSubmitting] = useState(false);
 
   useEffect(() => {
-    const loadTeacherData = async () => {
+    const loadTeacherDataAndSettings = async () => {
       try {
         const userDataStr = await AsyncStorage.getItem('userData');
         if (userDataStr) {
           const userData = JSON.parse(userDataStr);
           setTeacherName(userData.name || 'Unknown Teacher');
         }
+
+        // Fetch settings dynamically from the live database
+        const settingsRes = await fetch(`${API_BASE}/settings`);
+        const settingsJson = await settingsRes.json();
+        if (settingsJson.success && settingsJson.data) {
+          const settings = settingsJson.data;
+          if (settings.gathaList && settings.gathaList.length > 0) {
+            setGathaList(settings.gathaList);
+          }
+          if (settings.lateCutoffTime) {
+            const parts = settings.lateCutoffTime.split(':');
+            setLateCutoff({
+              hour: parseInt(parts[0]) || 9,
+              minute: parseInt(parts[1]) || 15
+            });
+          }
+        }
       } catch (err) {
-        console.error('AsyncStorage read error:', err);
+        console.error('AsyncStorage or settings read error:', err);
       }
     };
-    loadTeacherData();
+    loadTeacherDataAndSettings();
     return () => clearTimeout(cooldownRef.current);
   }, []);
 
@@ -115,8 +129,8 @@ export default function ScannerScreen({ navigation }) {
           return;
         }
         const now = new Date();
-        const isLate = now.getHours() > LATE_HOUR ||
-          (now.getHours() === LATE_HOUR && now.getMinutes() >= LATE_MINUTE);
+        const isLate = now.getHours() > lateCutoff.hour ||
+          (now.getHours() === lateCutoff.hour && now.getMinutes() >= lateCutoff.minute);
         const status = isLate ? 'Late' : 'Present';
         const pts = isLate ? 5 : 10;
 
@@ -160,7 +174,7 @@ export default function ScannerScreen({ navigation }) {
   // ── Submit Gathas ──────────────────────────────────────────────────────
   const submitGathas = async () => {
     if (!modalStudent) return;
-    const items = GATHA_LIST.filter(g => selectedGathas[g.name]);
+    const items = gathaList.filter(g => selectedGathas[g.name]);
     if (customGatha.trim() && Number(customPts) > 0) {
       items.push({ name: customGatha.trim(), pts: Number(customPts) });
     }
@@ -280,7 +294,7 @@ export default function ScannerScreen({ navigation }) {
             <Text style={styles.modalSub}>⭐ {modalStudent?.points ?? 0} pts  ·  Select Gathas completed</Text>
 
             <ScrollView style={styles.gathaList} showsVerticalScrollIndicator={false}>
-              {GATHA_LIST.map(g => {
+              {gathaList.map(g => {
                 const selected = !!selectedGathas[g.name];
                 return (
                   <TouchableOpacity

@@ -144,6 +144,16 @@ router.post('/:id/attendance', async (req, res) => {
     const { status, date, loggedBy } = req.body;
     const logDate = date || todayIST();
 
+    // Check if attendance is already marked for this date to prevent double-scanning point inflation
+    const existingLog = await Student.findOne({
+      _id: req.params.id,
+      'attendanceLogs.date': logDate
+    });
+
+    if (existingLog) {
+      return res.status(400).json({ success: false, message: 'Attendance already marked for this date.' });
+    }
+
     const pointsAwarded = status === 'Present' ? 10 : status === 'Late' ? 5 : 0;
 
     const student = await Student.findByIdAndUpdate(

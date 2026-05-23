@@ -8,14 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE = 'https://shrut-mandir.vercel.app/api';
 
-const GATHA_LIST = [
-  { name: 'Navkar Mantra',          pts: 10 },
-  { name: 'Logassa Sutra',          pts: 20 },
-  { name: 'Uvasaggaharam Stotra',   pts: 20 },
-  { name: 'Bhaktamar Stotra',       pts: 50 },
-  { name: 'Namutthunam Sutra',      pts: 15 },
-  { name: 'Aarti',                  pts: 10 },
-];
+
 
 const ACTIVITY_COLORS = {
   Gatha:     { bg: '#f59e0b22', border: '#f59e0b', text: '#f59e0b', icon: '🙏' },
@@ -50,20 +43,37 @@ export default function StudentProfileScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab,  setActiveTab]  = useState('Attendance'); // 'Attendance' | 'Activity'
   const [teacherName, setTeacherName] = useState('Unknown Teacher');
+  
+  // Dynamic Settings states (initialized with standard defaults)
+  const [gathaList, setGathaList] = useState([
+    { name: 'Navkar Mantra', pts: 10 },
+    { name: 'Logassa Sutra', pts: 20 },
+    { name: 'Uvasaggaharam Stotra', pts: 20 },
+    { name: 'Bhaktamar Stotra', pts: 50 },
+    { name: 'Namutthunam Sutra', pts: 15 },
+    { name: 'Aarti', pts: 10 }
+  ]);
 
   useEffect(() => {
-    const loadTeacherData = async () => {
+    const loadTeacherDataAndSettings = async () => {
       try {
         const userDataStr = await AsyncStorage.getItem('userData');
         if (userDataStr) {
           const userData = JSON.parse(userDataStr);
           setTeacherName(userData.name || 'Unknown Teacher');
         }
+
+        // Fetch settings dynamically from the live database
+        const settingsRes = await fetch(`${API_BASE}/settings`);
+        const settingsJson = await settingsRes.json();
+        if (settingsJson.success && settingsJson.data && settingsJson.data.gathaList && settingsJson.data.gathaList.length > 0) {
+          setGathaList(settingsJson.data.gathaList);
+        }
       } catch (err) {
-        console.error('AsyncStorage read error:', err);
+        console.error('AsyncStorage or settings read error:', err);
       }
     };
-    loadTeacherData();
+    loadTeacherDataAndSettings();
   }, []);
 
   // Log Activity modal
@@ -105,7 +115,7 @@ export default function StudentProfileScreen({ route, navigation }) {
     const items = [];
 
     if (logType === 'Gatha') {
-      GATHA_LIST.filter(g => selectedGathas[g.name]).forEach(g =>
+      gathaList.filter(g => selectedGathas[g.name]).forEach(g =>
         items.push({ type: 'Gatha', description: g.name, pointsAwarded: g.pts })
       );
       if (customDesc.trim() && Number(customPts) !== 0) {
@@ -291,7 +301,7 @@ export default function StudentProfileScreen({ route, navigation }) {
 
             <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
               {/* Gatha checklist */}
-              {logType === 'Gatha' && GATHA_LIST.map(g => {
+              {logType === 'Gatha' && gathaList.map(g => {
                 const sel = !!selectedGathas[g.name];
                 return (
                   <TouchableOpacity
