@@ -18,6 +18,10 @@ export default function Login() {
     try {
       const res = await api.post('/auth/login', { username, password });
       if (res.data.success) {
+        if (res.data.user.role !== 'SuperAdmin') {
+          setError('Access Denied. Only SuperAdmin accounts can log in here.');
+          return;
+        }
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('user', JSON.stringify(res.data.user));
         navigate('/');
@@ -37,7 +41,7 @@ export default function Login() {
       <div className="glass-card" style={{ width: 400, padding: '2.5rem' }}>
         <h2 style={{ textAlign: 'center', marginBottom: '0.5rem' }}>ShrutMandir</h2>
         <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: '2rem' }}>
-          SuperAdmin & Teacher Portal
+          SuperAdmin Portal
         </p>
 
         {error && (

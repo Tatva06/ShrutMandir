@@ -7,49 +7,49 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 
 const API_BASE = 'https://shrut-mandir.vercel.app/api';
 
-// ── Hardcoded late cutoff: 9:15 AM ──────────────────────────────────────────
-const LATE_HOUR   = 9;
+// ── Hardcoded late cutoff: 8:15 AM ──────────────────────────────────────────
+const LATE_HOUR = 8;
 const LATE_MINUTE = 15;
 
 const SCAN_COOLDOWN_MS = 2500;
 
 // ── Pre-defined Gatha list ───────────────────────────────────────────────────
 const GATHA_LIST = [
-  { name: 'Navkar Mantra',          pts: 10 },
-  { name: 'Logassa Sutra',          pts: 20 },
-  { name: 'Uvasaggaharam Stotra',   pts: 20 },
-  { name: 'Bhaktamar Stotra',       pts: 50 },
-  { name: 'Namutthunam Sutra',      pts: 15 },
-  { name: 'Aarti',                  pts: 10 },
+  { name: 'Navkar Mantra', pts: 10 },
+  { name: 'Logassa Sutra', pts: 20 },
+  { name: 'Uvasaggaharam Stotra', pts: 20 },
+  { name: 'Bhaktamar Stotra', pts: 50 },
+  { name: 'Namutthunam Sutra', pts: 15 },
+  { name: 'Aarti', pts: 10 },
 ];
 
 const MODES = ['Attendance', 'Gatha', 'General'];
 
 function todayString() {
-  const d    = new Date();
+  const d = new Date();
   const yyyy = d.getFullYear();
-  const mm   = String(d.getMonth() + 1).padStart(2, '0');
-  const dd   = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 }
 
 export default function ScannerScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [mode,       setMode]       = useState('Attendance');
-  const [scanned,    setScanned]    = useState(false);
+  const [mode, setMode] = useState('Attendance');
+  const [scanned, setScanned] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const cooldownRef                 = useRef(null);
+  const cooldownRef = useRef(null);
 
   // Toast state
-  const [toast,        setToast]        = useState(null);  // { msg, color }
-  const toastAnim                       = useRef(new Animated.Value(-80)).current;
+  const [toast, setToast] = useState(null);  // { msg, color }
+  const toastAnim = useRef(new Animated.Value(-80)).current;
 
   // Gatha modal state
-  const [gathaModal,     setGathaModal]     = useState(false);
-  const [modalStudent,   setModalStudent]   = useState(null);
+  const [gathaModal, setGathaModal] = useState(false);
+  const [modalStudent, setModalStudent] = useState(null);
   const [selectedGathas, setSelectedGathas] = useState({});  // { gathaName: true/false }
-  const [customGatha,    setCustomGatha]    = useState('');
-  const [customPts,      setCustomPts]      = useState('');
+  const [customGatha, setCustomGatha] = useState('');
+  const [customPts, setCustomPts] = useState('');
   const [gathaSubmitting, setGathaSubmitting] = useState(false);
 
   useEffect(() => () => clearTimeout(cooldownRef.current), []);
@@ -58,7 +58,7 @@ export default function ScannerScreen({ navigation }) {
   const showToast = (msg, color = '#22c55e') => {
     setToast({ msg, color });
     Animated.sequence([
-      Animated.timing(toastAnim, { toValue: 0,   duration: 250, useNativeDriver: true }),
+      Animated.timing(toastAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
       Animated.delay(2200),
       Animated.timing(toastAnim, { toValue: -80, duration: 250, useNativeDriver: true }),
     ]).start(() => setToast(null));
@@ -66,7 +66,7 @@ export default function ScannerScreen({ navigation }) {
 
   // ── Find student by rollNo ───────────────────────────────────────────────
   const findStudent = async (rollNo) => {
-    const res  = await fetch(`${API_BASE}/students`);
+    const res = await fetch(`${API_BASE}/students`);
     const json = await res.json();
     if (!json.success) throw new Error('Could not fetch students.');
     return json.data.find(s => String(s.rollNo).trim() === String(rollNo).trim()) ?? null;
@@ -98,16 +98,16 @@ export default function ScannerScreen({ navigation }) {
           showToast(`⚠️  ${student.name} already marked today`, '#f59e0b');
           return;
         }
-        const now  = new Date();
+        const now = new Date();
         const isLate = now.getHours() > LATE_HOUR ||
           (now.getHours() === LATE_HOUR && now.getMinutes() >= LATE_MINUTE);
         const status = isLate ? 'Late' : 'Present';
-        const pts    = isLate ? 5 : 10;
+        const pts = isLate ? 5 : 10;
 
         await fetch(`${API_BASE}/students/${student._id}/attendance`, {
-          method:  'POST',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ status, date: todayString() }),
+          body: JSON.stringify({ status, date: todayString() }),
         });
         showToast(
           isLate
@@ -157,9 +157,9 @@ export default function ScannerScreen({ navigation }) {
       await Promise.all(
         items.map(g =>
           fetch(`${API_BASE}/students/${modalStudent._id}/activity`, {
-            method:  'POST',
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ type: 'Gatha', description: g.name, pointsAwarded: g.pts, date: todayString() }),
+            body: JSON.stringify({ type: 'Gatha', description: g.name, pointsAwarded: g.pts, date: todayString() }),
           })
         )
       );
@@ -220,8 +220,8 @@ export default function ScannerScreen({ navigation }) {
           </View>
           <Text style={styles.modeHint}>
             {mode === 'Attendance' && 'Scan to mark Present / Late'}
-            {mode === 'Gatha'      && 'Scan to log Gatha recital'}
-            {mode === 'General'    && 'Scan to open student profile'}
+            {mode === 'Gatha' && 'Scan to log Gatha recital'}
+            {mode === 'General' && 'Scan to open student profile'}
           </Text>
         </View>
 
@@ -325,36 +325,36 @@ export default function ScannerScreen({ navigation }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const RETICLE = 240;
-const CORNER  = 24;
-const CW      = 4;
+const CORNER = 24;
+const CW = 4;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  centered:  { flex: 1, backgroundColor: '#0f0e17', justifyContent: 'center', alignItems: 'center', padding: 32 },
+  centered: { flex: 1, backgroundColor: '#0f0e17', justifyContent: 'center', alignItems: 'center', padding: 32 },
 
-  permTitle:   { color: '#e0e7ff', fontSize: 22, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
-  permSub:     { color: '#818cf8', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
-  permBtn:     { backgroundColor: '#6366f1', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32 },
+  permTitle: { color: '#e0e7ff', fontSize: 22, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
+  permSub: { color: '#818cf8', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  permBtn: { backgroundColor: '#6366f1', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32 },
   permBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 
-  overlay:  { flex: 1 },
+  overlay: { flex: 1 },
 
   topBar: {
     backgroundColor: 'rgba(0,0,0,0.75)',
     paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20, alignItems: 'center',
   },
-  topTitle:   { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 14 },
+  topTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 14 },
 
   segmentControl: { flexDirection: 'row', backgroundColor: '#0f0e17aa', borderRadius: 12, padding: 4, marginBottom: 10 },
-  segment:        { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8 },
-  segmentActive:  { backgroundColor: '#6366f1' },
-  segmentText:    { color: '#818cf8', fontSize: 13, fontWeight: '600' },
+  segment: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8 },
+  segmentActive: { backgroundColor: '#6366f1' },
+  segmentText: { color: '#818cf8', fontSize: 13, fontWeight: '600' },
   segmentTextActive: { color: '#fff' },
-  modeHint:       { color: '#c7d2fe', fontSize: 12 },
+  modeHint: { color: '#c7d2fe', fontSize: 12 },
 
   reticleRow: { flexDirection: 'row', height: RETICLE },
-  sideFill:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
-  reticle:    { width: RETICLE, height: RETICLE, backgroundColor: 'transparent' },
+  sideFill: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
+  reticle: { width: RETICLE, height: RETICLE, backgroundColor: 'transparent' },
 
   corner: { position: 'absolute', width: CORNER, height: CORNER, borderColor: '#6366f1' },
   cTL: { top: 0, left: 0, borderTopWidth: CW, borderLeftWidth: CW },
@@ -367,34 +367,34 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', gap: 16, paddingBottom: 30,
   },
   processingRow: { flexDirection: 'row', alignItems: 'center' },
-  processingText:{ color: '#fff', fontSize: 15 },
-  idleText:      { color: '#c7d2fe', fontSize: 14 },
-  resetBtn:      { backgroundColor: 'rgba(99,102,241,0.25)', borderWidth: 1, borderColor: '#6366f1', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 24 },
-  resetBtnText:  { color: '#a5b4fc', fontSize: 14, fontWeight: '600' },
+  processingText: { color: '#fff', fontSize: 15 },
+  idleText: { color: '#c7d2fe', fontSize: 14 },
+  resetBtn: { backgroundColor: 'rgba(99,102,241,0.25)', borderWidth: 1, borderColor: '#6366f1', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 24 },
+  resetBtnText: { color: '#a5b4fc', fontSize: 14, fontWeight: '600' },
 
   // Toast
-  toast:     { position: 'absolute', top: 0, left: 0, right: 0, paddingTop: 56, paddingBottom: 14, paddingHorizontal: 20, alignItems: 'center' },
+  toast: { position: 'absolute', top: 0, left: 0, right: 0, paddingTop: 56, paddingBottom: 14, paddingHorizontal: 20, alignItems: 'center' },
   toastText: { color: '#fff', fontSize: 15, fontWeight: '700', textAlign: 'center' },
 
   // Gatha Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
-  modalCard:    { backgroundColor: '#1e1b4b', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 24, paddingHorizontal: 20, maxHeight: '80%' },
-  modalTitle:   { color: '#e0e7ff', fontSize: 20, fontWeight: '700', textAlign: 'center' },
-  modalSub:     { color: '#818cf8', fontSize: 13, textAlign: 'center', marginTop: 4, marginBottom: 16 },
-  gathaList:    { maxHeight: 360 },
-  gathaRow:     { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#312e81' },
+  modalCard: { backgroundColor: '#1e1b4b', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 24, paddingHorizontal: 20, maxHeight: '80%' },
+  modalTitle: { color: '#e0e7ff', fontSize: 20, fontWeight: '700', textAlign: 'center' },
+  modalSub: { color: '#818cf8', fontSize: 13, textAlign: 'center', marginTop: 4, marginBottom: 16 },
+  gathaList: { maxHeight: 360 },
+  gathaRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#312e81' },
   gathaRowSelected: { backgroundColor: '#312e8155', borderRadius: 8 },
-  gathaCheck:   { fontSize: 20, color: '#818cf8', marginRight: 12, width: 24 },
-  gathaName:    { flex: 1, color: '#e0e7ff', fontSize: 14 },
-  gathaPoints:  { color: '#22c55e', fontSize: 13, fontWeight: '700' },
+  gathaCheck: { fontSize: 20, color: '#818cf8', marginRight: 12, width: 24 },
+  gathaName: { flex: 1, color: '#e0e7ff', fontSize: 14 },
+  gathaPoints: { color: '#22c55e', fontSize: 13, fontWeight: '700' },
 
-  customBlock:  { paddingVertical: 14, gap: 8 },
-  customLabel:  { color: '#818cf8', fontSize: 12, fontWeight: '600' },
-  customInput:  { backgroundColor: '#0f0e17', borderRadius: 8, borderWidth: 1, borderColor: '#312e81', color: '#e0e7ff', padding: 10, fontSize: 14 },
+  customBlock: { paddingVertical: 14, gap: 8 },
+  customLabel: { color: '#818cf8', fontSize: 12, fontWeight: '600' },
+  customInput: { backgroundColor: '#0f0e17', borderRadius: 8, borderWidth: 1, borderColor: '#312e81', color: '#e0e7ff', padding: 10, fontSize: 14 },
 
-  modalFooter:       { flexDirection: 'row', gap: 10, paddingVertical: 16 },
-  cancelModalBtn:    { flex: 1, backgroundColor: '#312e81', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
-  cancelModalBtnText:{ color: '#818cf8', fontSize: 14, fontWeight: '600' },
-  submitModalBtn:    { flex: 2, backgroundColor: '#6366f1', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
-  submitModalBtnText:{ color: '#fff', fontSize: 14, fontWeight: '700' },
+  modalFooter: { flexDirection: 'row', gap: 10, paddingVertical: 16 },
+  cancelModalBtn: { flex: 1, backgroundColor: '#312e81', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  cancelModalBtnText: { color: '#818cf8', fontSize: 14, fontWeight: '600' },
+  submitModalBtn: { flex: 2, backgroundColor: '#6366f1', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  submitModalBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });

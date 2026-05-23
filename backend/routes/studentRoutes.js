@@ -38,6 +38,40 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ─── GET /api/students/by-roll/:rollNo ──────────────────────────────────────────
+// Returns a single student by their rollNo
+router.get('/by-roll/:rollNo', async (req, res) => {
+  try {
+    const student = await Student.findOne({ rollNo: String(req.params.rollNo).trim() }).populate('classId', 'className ageGroup');
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found with this roll number.' });
+    }
+    
+    const parts = (student.name || '').trim().split(/\s+/);
+    const formatted = {
+      _id: student._id,
+      rollNo: student.rollNo,
+      name: student.name,
+      firstName: parts[0] || '',
+      lastName: parts.slice(1).join(' ') || '',
+      phoneNumber: student.phoneNumber,
+      village: student.village,
+      classId: student.classId,
+      classGroupId: { _id: student.village || 'default', name: student.village || 'No Village' },
+      points: student.points,
+      totalPoints: student.points,
+      qrId: student.rollNo,
+      attendanceLogs: student.attendanceLogs,
+      activityLogs: student.activityLogs,
+    };
+    
+    res.status(200).json({ success: true, data: formatted });
+  } catch (err) {
+    console.error('Lookup Student Error:', err);
+    res.status(500).json({ success: false, message: 'Server error looking up student.' });
+  }
+});
+
 // ─── POST /api/students ───────────────────────────────────────────────────────
 // Add single student (Admin only)
 router.post('/', requireAuth, requireSuperAdmin, async (req, res) => {

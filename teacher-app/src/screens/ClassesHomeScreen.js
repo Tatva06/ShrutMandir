@@ -28,8 +28,8 @@ export default function ClassesHomeScreen({ navigation }) {
       } else {
         Alert.alert('Error', 'Could not load classes.');
       }
-    } catch {
-      Alert.alert('Network Error', 'Could not reach the server.');
+    } catch (err) {
+      Alert.alert('Network Error', `Could not reach the server: ${err.message}`);
     } finally {
       setLoading(false);
       setRefreshing(false);

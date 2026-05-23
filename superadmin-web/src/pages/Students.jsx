@@ -144,8 +144,8 @@ export default function Students() {
               <QRCodeSVG 
                 value={student.rollNo} 
                 size={120} 
-                level="H" 
-                includeMargin={false} 
+                level="M" 
+                includeMargin={true} 
               />
               <h3>{student.name}</h3>
               <p>{student.classId?.className || student.village || 'ShrutMandir Patshala'}</p>

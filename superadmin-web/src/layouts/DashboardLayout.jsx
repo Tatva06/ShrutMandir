@@ -11,7 +11,20 @@ export default function DashboardLayout() {
     if (!userData) {
       navigate('/login');
     } else {
-      setUser(JSON.parse(userData));
+      try {
+        const parsedUser = JSON.parse(userData);
+        if (parsedUser.role !== 'SuperAdmin') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/login');
+        } else {
+          setUser(parsedUser);
+        }
+      } catch (err) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+      }
     }
   }, [navigate]);
 
