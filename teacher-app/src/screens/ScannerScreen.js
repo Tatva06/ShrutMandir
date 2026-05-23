@@ -11,7 +11,7 @@ const API_BASE = 'https://shrut-mandir.vercel.app/api';
 const LATE_HOUR = 8;
 const LATE_MINUTE = 15;
 
-const SCAN_COOLDOWN_MS = 2500;
+const SCAN_COOLDOWN_MS = 1200;
 
 // ── Pre-defined Gatha list ───────────────────────────────────────────────────
 const GATHA_LIST = [
