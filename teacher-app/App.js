@@ -1,13 +1,62 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Text, TouchableOpacity } from 'react-native';
 
-import ClassListScreen from './src/screens/ClassListScreen';
-import ScannerScreen   from './src/screens/ScannerScreen';
+import ClassesHomeScreen    from './src/screens/ClassesHomeScreen';
+import ClassListScreen      from './src/screens/ClassListScreen';
+import StudentProfileScreen from './src/screens/StudentProfileScreen';
+import ScannerScreen        from './src/screens/ScannerScreen';
+import DashboardScreen      from './src/screens/DashboardScreen';
 
-const Tab = createBottomTabNavigator();
+const Tab   = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
+// ─── Classes Stack ────────────────────────────────────────────────────────────
+function ClassesStack() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle:      { backgroundColor: '#1e1b4b' },
+        headerTintColor:  '#e0e7ff',
+        headerTitleStyle: { fontWeight: '700', fontSize: 18 },
+      }}
+    >
+      <Stack.Screen
+        name="ClassesHome"
+        component={ClassesHomeScreen}
+        options={({ navigation }) => ({
+          title: '🎵 ShrutMandir',
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() =>
+                alert('Teacher Profile\nComing Soon — SuperAdmin panel will manage this.')
+              }
+              style={{ marginRight: 4 }}
+            >
+              <Text style={{ fontSize: 26 }}>👤</Text>
+            </TouchableOpacity>
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="ClassList"
+        component={ClassListScreen}
+        options={({ route }) => ({ title: route.params?.className ?? 'Students' })}
+      />
+      <Stack.Screen
+        name="StudentProfile"
+        component={StudentProfileScreen}
+        options={({ route }) => ({
+          title: route.params?.student?.name ?? 'Student Profile',
+        })}
+      />
+    </Stack.Navigator>
+  );
+}
+
+// ─── Root Tab Navigator ───────────────────────────────────────────────────────
 export default function App() {
   return (
     <NavigationContainer>
@@ -16,19 +65,21 @@ export default function App() {
           headerShown: false,
           tabBarStyle: {
             backgroundColor: '#1e1b4b',
-            borderTopColor: '#312e81',
+            borderTopColor:  '#312e81',
+            paddingBottom:   4,
+            height:          60,
           },
-          tabBarActiveTintColor:   '#6366f1',
+          tabBarActiveTintColor:   '#818cf8',
           tabBarInactiveTintColor: '#4c4f6b',
-          tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+          tabBarLabelStyle:        { fontSize: 11, fontWeight: '600', marginBottom: 4 },
         }}
       >
         <Tab.Screen
-          name="ClassList"
-          component={ClassListScreen}
+          name="Classes"
+          component={ClassesStack}
           options={{
-            tabBarLabel: 'Class List',
-            tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>📋</Text>,
+            tabBarLabel: 'Classes',
+            tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📚</Text>,
           }}
         />
         <Tab.Screen
@@ -36,7 +87,15 @@ export default function App() {
           component={ScannerScreen}
           options={{
             tabBarLabel: 'QR Scanner',
-            tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>📷</Text>,
+            tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📷</Text>,
+          }}
+        />
+        <Tab.Screen
+          name="Dashboard"
+          component={DashboardScreen}
+          options={{
+            tabBarLabel: 'Dashboard',
+            tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📊</Text>,
           }}
         />
       </Tab.Navigator>
