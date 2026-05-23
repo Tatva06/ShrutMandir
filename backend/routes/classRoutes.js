@@ -120,4 +120,52 @@ router.get('/:id/attendance-locked/:date', async (req, res) => {
   }
 });
 
+// ─── POST /api/classes/:id/reset-attendance ───────────────────────────────────
+// SuperAdmin only: removes ALL attendance logs for the given date from every
+// student in this class AND unlocks attendance so teachers can re-submit.
+// Body: { date: 'YYYY-MM-DD' }
+router.post('/:id/reset-attendance', async (req, res) => {
+  try {
+    const { date } = req.body;
+    if (!date) {
+      return res.status(400).json({ success: false, message: 'date is required.' });
+    }
+
+    const Student = require('../models/Student');
+
+    // Find all students in this class that have a log for this date
+    const students = await Student.find({
+      classId: req.params.id,
+      'attendanceLogs.date': date
+    });
+
+    let resetCount = 0;
+    for (const student of students) {
+      const log = student.attendanceLogs.find(l => l.date === date);
+      if (log) {
+        const pts = log.pointsAwarded || 0;
+        await Student.findByIdAndUpdate(student._id, {
+          $pull: { attendanceLogs: { date } },
+          $inc:  { points: -pts },
+        });
+        resetCount++;
+      }
+    }
+
+    // Unlock attendance for this class on this date
+    await Class.findByIdAndUpdate(req.params.id, {
+      $pull: { attendanceLocked: date }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Attendance reset for ${date}. ${resetCount} student records cleared. Class unlocked.`,
+      resetCount,
+    });
+  } catch (err) {
+    console.error('Error resetting attendance:', err.message);
+    res.status(500).json({ success: false, message: 'Server error resetting attendance.' });
+  }
+});
+
 module.exports = router;

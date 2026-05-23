@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import api from '../api';
-import { Users, BookOpen, Clock, Activity } from 'lucide-react';
+import { Users, BookOpen, Clock, Activity, RefreshCw } from 'lucide-react';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({ totalStudents: 0, classesCount: 0 });
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const intervalRef = useRef(null);
 
   // Helper to check if a date string is "today"
   const isToday = (dateStr) => {
@@ -13,29 +16,33 @@ export default function Dashboard() {
     return dateStr.startsWith(today);
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  const fetchDashboardData = async (silent = false) => {
+    if (!silent) setLoading(true); else setRefreshing(true);
     try {
       const [studentRes, classRes] = await Promise.all([
-        api.get('/students'),
+        api.get(`/students?t=${Date.now()}`),
         api.get('/classes')
       ]);
-      
       setStudents(studentRes.data.data);
       setStats({
         totalStudents: studentRes.data.count,
         classesCount: classRes.data.count
       });
+      setLastUpdated(new Date());
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    fetchDashboardData();
+    // Auto-refresh every 30 seconds to catch teacher submissions
+    intervalRef.current = setInterval(() => fetchDashboardData(true), 30000);
+    return () => clearInterval(intervalRef.current);
+  }, []);
 
   // Compute Today's Master Attendance
   const todaysAttendance = students.map(student => {
@@ -76,7 +83,26 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1 style={{ marginBottom: '2rem' }}>Daily Master Review</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <div>
+          <h1 style={{ marginBottom: '0.25rem' }}>Daily Master Review</h1>
+          {lastUpdated && (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+              Last updated: {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              {refreshing && <span style={{ marginLeft: '0.5rem', color: 'var(--accent-indigo)' }}>↻ Refreshing…</span>}
+            </p>
+          )}
+        </div>
+        <button
+          className="btn btn-secondary"
+          onClick={() => fetchDashboardData(true)}
+          disabled={refreshing}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <RefreshCw size={15} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+          Refresh
+        </button>
+      </div>
 
       {/* Top Metrics Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>

@@ -118,7 +118,7 @@ export default function ClassListScreen({ route, navigation }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: today, loggedBy: teacherName, attendanceData }),
       });
-      
+
       if (!bulkRes.ok) {
         let errMessage = 'Bulk API failed';
         try {
@@ -135,10 +135,42 @@ export default function ClassListScreen({ route, navigation }) {
         body: JSON.stringify({ date: today }),
       });
 
-      Alert.alert('✅ Done!', 'Attendance submitted and locked for today.');
+      // ── Optimistic UI update ──────────────────────────────────────────────
+      // Immediately inject attendanceLogs into the local students state so
+      // status badges appear right away without waiting for a cache-busted refetch.
+      const pointsMap = { Present: 10, Late: 5, Absent: 0 };
+      setStudents(prev => prev.map(s => {
+        const status = statusMap[s._id] || 'Absent';
+        const pointsAwarded = pointsMap[status] ?? 0;
+        const existingLog = (s.attendanceLogs || []).find(l => l.date === today);
+        if (existingLog) return s; // already has a log, don't double-add
+        return {
+          ...s,
+          attendanceLogs: [
+            ...(s.attendanceLogs || []),
+            { date: today, status, pointsAwarded, timestamp: new Date().toISOString(), loggedBy: teacherName }
+          ],
+        };
+      }));
+
       setAttendanceMode(false);
       setIsLocked(true);
-      fetchAll(true);
+
+      Alert.alert('✅ Done!', 'Attendance submitted and locked for today.');
+
+      // Background cache-busted refetch to sync real server data
+      fetch(`${API_BASE}/students?t=${Date.now()}`)
+        .then(r => r.json())
+        .then(json => {
+          if (json.success) {
+            const classStudents = json.data.filter(s =>
+              s.classId === classId || (s.classId && s.classId._id === classId)
+            );
+            setStudents(classStudents);
+          }
+        })
+        .catch(() => {}); // silent — optimistic data is already showing
+
     } catch (err) {
       console.error(err);
       Alert.alert('Error', err.message || 'Could not submit attendance. Try again.');

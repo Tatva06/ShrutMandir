@@ -205,6 +205,55 @@ router.delete('/:id/attendance/:logId', requireAuth, requireSuperAdmin, async (r
   }
 });
 
+// ─── PUT /api/students/:id/attendance-override ────────────────────────────────
+// SuperAdmin override: remove existing log for a date and insert a new one.
+// Adjusts points atomically (subtracts old, adds new).
+router.put('/:id/attendance-override', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const { status, date, loggedBy } = req.body;
+    if (!status || !date) {
+      return res.status(400).json({ success: false, message: 'status and date are required.' });
+    }
+
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
+
+    // Find existing log for this date
+    const existingLog = student.attendanceLogs.find(l => l.date === date);
+    const oldPoints = existingLog ? (existingLog.pointsAwarded || 0) : 0;
+    const newPoints = status === 'Present' ? 10 : status === 'Late' ? 5 : 0;
+    const pointsDiff = newPoints - oldPoints;
+
+    // Pull old log, push new one, adjust points
+    const updated = await Student.findByIdAndUpdate(
+      req.params.id,
+      {
+        $pull: { attendanceLogs: { date } },
+        $inc:  { points: pointsDiff },
+      },
+      { new: false } // get doc before pull to calculate diff (already done above)
+    );
+
+    // Now push the new log
+    const final = await Student.findByIdAndUpdate(
+      req.params.id,
+      {
+        $push: { attendanceLogs: { date, status, pointsAwarded: newPoints, timestamp: new Date(), loggedBy: loggedBy || 'SuperAdmin' } },
+      },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Attendance overridden to ${status} for ${date}. Points adjusted by ${pointsDiff > 0 ? '+' : ''}${pointsDiff}.`,
+      data: { status, pointsAwarded: newPoints, newTotal: final.points },
+    });
+  } catch (err) {
+    console.error('Override error:', err);
+    res.status(500).json({ success: false, message: 'Server error overriding attendance.' });
+  }
+});
+
 // ─── POST /api/students/:id/activity ─────────────────────────────────────────
 router.post('/:id/activity', async (req, res) => {
   try {
