@@ -4,7 +4,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const studentRoutes = require('./routes/studentRoutes');
-const attendanceRoutes = require('./routes/attendanceRoutes');
+const classRoutes   = require('./routes/classRoutes');
 
 const app = express();
 
@@ -18,7 +18,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/students', studentRoutes);
-app.use('/api/attendance', attendanceRoutes);
+app.use('/api/classes',  classRoutes);
 
 // ─── MongoDB Connection ───────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
