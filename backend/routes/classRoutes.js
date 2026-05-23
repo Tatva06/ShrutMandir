@@ -9,8 +9,8 @@ router.get('/', async (req, res) => {
     const classes = await Class.find().sort({ ageGroup: 1 });
     res.status(200).json({ success: true, count: classes.length, data: classes });
   } catch (err) {
-    console.error('Error fetching classes:', err.message);
-    res.status(500).json({ success: false, message: 'Server error fetching classes.' });
+    console.error('Error fetching classes — full:', err);
+    res.status(500).json({ success: false, message: err.message || 'Server error fetching classes.' });
   }
 });
 
