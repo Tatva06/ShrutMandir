@@ -26,19 +26,34 @@ app.use('/api/auth',     authRoutes);
 app.use('/api/teachers', teacherRoutes);
 app.use('/api/settings', settingsRoutes);
 
-// ─── MongoDB Connection ───────────────────────────────────────────────────────
+// ─── MongoDB Connection (Serverless Cached) ───────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
+let cachedDb = global.mongoose;
+
+if (!cachedDb) {
+  cachedDb = global.mongoose = { conn: null, promise: null };
+}
+
 const connectDB = async () => {
-  if (mongoose.connection.readyState >= 1) {
-    return;
+  if (cachedDb.conn) {
+    return cachedDb.conn;
   }
-  try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log('✅ Connected to MongoDB');
-  } catch (err) {
-    console.error('❌ MongoDB connection failed:', err.message);
+  
+  if (!cachedDb.promise) {
+    cachedDb.promise = mongoose.connect(process.env.MONGO_URI, {
+      bufferCommands: false,
+    }).then((mongoose) => {
+      console.log('✅ Connected to MongoDB (New Connection)');
+      return mongoose;
+    }).catch(err => {
+      console.error('❌ MongoDB connection failed:', err.message);
+      throw err;
+    });
   }
+  
+  cachedDb.conn = await cachedDb.promise;
+  return cachedDb.conn;
 };
 
 connectDB();

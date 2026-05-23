@@ -161,3 +161,66 @@ h1, h2, h3, h4, h5 {
 .data-table tbody tr:hover {
   background-color: rgba(49, 46, 129, 0.3);
 }
+
+/* ── Print Styles for QR Code Generator ── */
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+  
+  /* Hide the entire standard app UI during print */
+  .app-container > aside,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Expand main content to full width */
+  .main-content {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Show the print-only container */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Grid layout for ID cards (3 columns) */
+  .id-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    padding: 20px;
+  }
+
+  /* Individual ID Card Styling */
+  .id-card {
+    border: 1px solid #ccc;
+    padding: 20px;
+    text-align: center;
+    border-radius: 8px;
+    page-break-inside: avoid;
+    font-family: sans-serif;
+  }
+  
+  .id-card h3 {
+    margin: 10px 0 5px;
+    font-size: 16px;
+    color: black;
+  }
+  
+  .id-card p {
+    margin: 0;
+    font-size: 12px;
+    color: #555;
+  }
+}
+
+/* Hide print-only elements on screen */
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+

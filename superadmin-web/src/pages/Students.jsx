@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { Search, Download, Plus, Trash2, X } from 'lucide-react';
+import { Search, Download, Plus, Trash2, X, Printer } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function Students() {
   const [students, setStudents] = useState([]);
@@ -52,17 +53,21 @@ export default function Students() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1>Student Management</h1>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button onClick={exportCSV} className="btn btn-secondary">
-            <Download size={16} /> Export CSV
-          </button>
-          <button onClick={() => setAddModalOpen(true)} className="btn btn-primary">
-            <Plus size={16} /> Add Student
-          </button>
+      <div className="no-print">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h1>Student Management</h1>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button onClick={() => window.print()} className="btn btn-secondary" title="Print QR Code ID Cards">
+              <Printer size={16} /> Export ID Cards
+            </button>
+            <button onClick={exportCSV} className="btn btn-secondary">
+              <Download size={16} /> Export CSV
+            </button>
+            <button onClick={() => setAddModalOpen(true)} className="btn btn-primary">
+              <Plus size={16} /> Add Student
+            </button>
+          </div>
         </div>
-      </div>
 
       <div className="glass-card" style={{ marginBottom: '2rem', padding: '1rem 1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -129,6 +134,27 @@ export default function Students() {
           onUpdate={fetchData}
         />
       )}
+      </div>
+
+      {/* ── Hidden Print Area for ID Cards ── */}
+      <div className="print-only">
+        <div className="id-card-grid">
+          {students.map((student) => (
+            <div key={student._id} className="id-card">
+              <QRCodeSVG 
+                value={student.rollNo} 
+                size={120} 
+                level="H" 
+                includeMargin={false} 
+              />
+              <h3>{student.name}</h3>
+              <p>{student.classId?.className || student.village || 'ShrutMandir Patshala'}</p>
+              <p style={{ marginTop: '4px', fontSize: '10px', color: '#888' }}>ID: {student.rollNo}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
   );
 }
