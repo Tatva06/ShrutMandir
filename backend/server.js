@@ -7,6 +7,7 @@ const studentRoutes = require('./routes/studentRoutes');
 const classRoutes   = require('./routes/classRoutes');
 const authRoutes    = require('./routes/authRoutes');
 const teacherRoutes = require('./routes/teacherRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use('/api/students', studentRoutes);
 app.use('/api/classes',  classRoutes);
 app.use('/api/auth',     authRoutes);
 app.use('/api/teachers', teacherRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // ─── MongoDB Connection ───────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;

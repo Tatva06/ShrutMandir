@@ -5,9 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
 import Teachers from './pages/Teachers';
-
-// Placeholder pages for next phases
-const SettingsPage = () => <div style={{ color: 'var(--text-sub)' }}><h1>Settings</h1><p>Coming soon...</p></div>;
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -20,7 +18,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="students" element={<Students />} />
           <Route path="teachers" element={<Teachers />} />
-          <Route path="settings" element={<SettingsPage />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
