@@ -6,14 +6,9 @@ export default function TeacherProfileScreen({ userData, onLogout }) {
   const initials = (nameParts[0]?.[0] ?? '') + (nameParts[1]?.[0] ?? '');
 
   const handleLogoutPress = () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Log Out', style: 'destructive', onPress: onLogout }
-      ]
-    );
+    if (onLogout) {
+      onLogout();
+    }
   };
 
   return (
