@@ -33,4 +33,4 @@ const attendanceLogSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('AttendanceLog', attendanceLogSchema);
+module.exports = mongoose.models.AttendanceLog || mongoose.model('AttendanceLog', attendanceLogSchema);

@@ -31,4 +31,4 @@ const studentSchema = new mongoose.Schema({
   activityLogs:   { type: [activityLogSchema],   default: [] },
 });
 
-module.exports = mongoose.model('Student', studentSchema);
+module.exports = mongoose.models.Student || mongoose.model('Student', studentSchema);

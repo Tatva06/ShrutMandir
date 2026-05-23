@@ -26,4 +26,4 @@ const classGroupSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('ClassGroup', classGroupSchema);
+module.exports = mongoose.models.ClassGroup || mongoose.model('ClassGroup', classGroupSchema);
