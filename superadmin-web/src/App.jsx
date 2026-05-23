@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
 import Teachers from './pages/Teachers';
 import Settings from './pages/Settings';
+import Attendance from './pages/Attendance';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="students" element={<Students />} />
           <Route path="teachers" element={<Teachers />} />
+          <Route path="attendance" element={<Attendance />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 

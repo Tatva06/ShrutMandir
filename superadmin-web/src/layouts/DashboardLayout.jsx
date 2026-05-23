@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, Settings, LogOut, ClipboardList } from 'lucide-react';
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
@@ -60,6 +60,10 @@ export default function DashboardLayout() {
 
           <NavLink to="/teachers" className={({ isActive }) => `btn ${isActive ? 'btn-primary' : 'btn-secondary'}`} style={{ justifyContent: 'flex-start' }}>
             <BookOpen size={18} /> Teachers
+          </NavLink>
+
+          <NavLink to="/attendance" className={({ isActive }) => `btn ${isActive ? 'btn-primary' : 'btn-secondary'}`} style={{ justifyContent: 'flex-start' }}>
+            <ClipboardList size={18} /> Attendance
           </NavLink>
 
           {user.role === 'SuperAdmin' && (

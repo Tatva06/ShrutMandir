@@ -51,14 +51,16 @@ export default function ClassListScreen({ route, navigation }) {
 
       if (studJson.success) {
         // Filter students to only show those in this specific class
-        const classStudents = studJson.data.filter(s => 
+        const classStudents = studJson.data.filter(s =>
           s.classId === classId || (s.classId && s.classId._id === classId)
         );
         setStudents(classStudents);
-        // Init all to 'Absent' by default
-        const init = {};
-        classStudents.forEach(s => { init[s._id] = 'Absent'; });
-        setStatusMap(init);
+        // Only reset statusMap on initial load, NOT on refresh after submit
+        if (!isRefresh) {
+          const init = {};
+          classStudents.forEach(s => { init[s._id] = 'Absent'; });
+          setStatusMap(init);
+        }
       }
       if (lockJson.success !== undefined) {
         setIsLocked(lockJson.locked ?? false);
