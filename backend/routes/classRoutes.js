@@ -61,6 +61,48 @@ router.post('/:id/lock-attendance', async (req, res) => {
   }
 });
 
+// ─── POST /api/classes/:id/bulk-attendance ────────────────────────────────────
+// Body: { date: 'YYYY-MM-DD', loggedBy: 'Teacher Name', attendanceData: [{ studentId, status }] }
+router.post('/:id/bulk-attendance', async (req, res) => {
+  try {
+    const { date, loggedBy, attendanceData } = req.body;
+    if (!date || !attendanceData || !Array.isArray(attendanceData)) {
+      return res.status(400).json({ success: false, message: 'Invalid payload.' });
+    }
+
+    const Student = require('../models/Student');
+    let updatedCount = 0;
+
+    // Process each student
+    for (const record of attendanceData) {
+      const { studentId, status } = record;
+      
+      // Check if already marked
+      const existingLog = await Student.findOne({
+        _id: studentId,
+        'attendanceLogs.date': date
+      });
+
+      if (!existingLog) {
+        const pointsAwarded = status === 'Present' ? 10 : status === 'Late' ? 5 : 0;
+        await Student.findByIdAndUpdate(
+          studentId,
+          {
+            $push: { attendanceLogs: { date, status, pointsAwarded, timestamp: new Date(), loggedBy } },
+            $inc: { points: pointsAwarded },
+          }
+        );
+        updatedCount++;
+      }
+    }
+
+    res.status(200).json({ success: true, message: `Bulk attendance processed. ${updatedCount} students updated.` });
+  } catch (err) {
+    console.error('Error in bulk attendance:', err.message);
+    res.status(500).json({ success: false, message: 'Server error processing bulk attendance.' });
+  }
+});
+
 // ─── GET /api/classes/:id/attendance-locked/:date ─────────────────────────────
 // Returns { locked: true/false } for whether that date is already locked
 router.get('/:id/attendance-locked/:date', async (req, res) => {

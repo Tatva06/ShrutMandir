@@ -99,16 +99,28 @@ export default function ClassListScreen({ route, navigation }) {
   const submitAttendance = async () => {
     setSubmitting(true);
     try {
-      // Fire all attendance posts in parallel
-      await Promise.all(
-        students.map(s =>
-          fetch(`${API_BASE}/students/${s._id}/attendance`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: statusMap[s._id], date: today }),
-          })
-        )
-      );
+      // Get teacher name from AsyncStorage
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const userDataStr = await AsyncStorage.getItem('userData');
+      const teacherName = userDataStr ? JSON.parse(userDataStr).name : 'Unknown Teacher';
+
+      // Prepare bulk data payload
+      const attendanceData = students.map(s => ({
+        studentId: s._id,
+        status: statusMap[s._id]
+      }));
+
+      // Fire a single bulk request
+      const bulkRes = await fetch(`${API_BASE}/classes/${classId}/bulk-attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: today, loggedBy: teacherName, attendanceData }),
+      });
+      
+      if (!bulkRes.ok) {
+        throw new Error('Bulk API failed');
+      }
+
       // Lock attendance for this class/date
       await fetch(`${API_BASE}/classes/${classId}/lock-attendance`, {
         method: 'POST',
@@ -120,7 +132,8 @@ export default function ClassListScreen({ route, navigation }) {
       setAttendanceMode(false);
       setIsLocked(true);
       fetchAll(true);
-    } catch {
+    } catch (err) {
+      console.error(err);
       Alert.alert('Error', 'Could not submit attendance. Try again.');
     } finally {
       setSubmitting(false);
