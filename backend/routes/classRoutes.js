@@ -2,12 +2,26 @@ const express = require('express');
 const router = express.Router();
 const Class = require('../models/Class');
 
+function todayIST() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+}
+
 // ─── GET /api/classes ─────────────────────────────────────────────────────────
-// Returns all class documents sorted by ageGroup
+// Returns all class documents sorted by ageGroup, with student count and today's lock status
 router.get('/', async (req, res) => {
   try {
     const classes = await Class.find().sort({ ageGroup: 1 });
-    res.status(200).json({ success: true, count: classes.length, data: classes });
+    const Student = require('../models/Student');
+    const today = todayIST();
+    
+    // Enrich with student count and lock status
+    const enriched = await Promise.all(classes.map(async (c) => {
+      const studentCount = await Student.countDocuments({ classId: c._id });
+      const isLockedToday = c.attendanceLocked && c.attendanceLocked.includes(today);
+      return { ...c.toObject(), studentCount, isLockedToday };
+    }));
+    
+    res.status(200).json({ success: true, count: enriched.length, data: enriched });
   } catch (err) {
     console.error('Error fetching classes — full:', err);
     res.status(500).json({ success: false, message: err.message || 'Server error fetching classes.' });
@@ -61,9 +75,11 @@ router.post('/:id/lock-attendance', async (req, res) => {
   }
 });
 
+const { requireAuth, requireSuperAdmin } = require('../middleware/auth');
+
 // ─── POST /api/classes/:id/bulk-attendance ────────────────────────────────────
 // Body: { date: 'YYYY-MM-DD', loggedBy: 'Teacher Name', attendanceData: [{ studentId, status }] }
-router.post('/:id/bulk-attendance', async (req, res) => {
+router.post('/:id/bulk-attendance', requireAuth, async (req, res) => {
   try {
     const { date, loggedBy, attendanceData } = req.body;
     if (!date || !attendanceData || !Array.isArray(attendanceData)) {
@@ -124,7 +140,7 @@ router.get('/:id/attendance-locked/:date', async (req, res) => {
 // SuperAdmin only: removes ALL attendance logs for the given date from every
 // student in this class AND unlocks attendance so teachers can re-submit.
 // Body: { date: 'YYYY-MM-DD' }
-router.post('/:id/reset-attendance', async (req, res) => {
+router.post('/:id/reset-attendance', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { date } = req.body;
     if (!date) {
@@ -168,4 +184,28 @@ router.post('/:id/reset-attendance', async (req, res) => {
   }
 });
 
+// ─── DELETE /api/classes/:id ──────────────────────────────────────────────────
+// SuperAdmin only: deletes a class and unassigns all students in it
+router.delete('/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const classDoc = await Class.findById(req.params.id);
+    if (!classDoc) return res.status(404).json({ success: false, message: 'Class not found.' });
+
+    const Student = require('../models/Student');
+    // Unassign all students that belonged to this class
+    const unassignResult = await Student.updateMany({ classId: req.params.id }, { $unset: { classId: '' } });
+
+    await Class.findByIdAndDelete(req.params.id);
+    res.status(200).json({
+      success: true,
+      message: `Class "${classDoc.className}" deleted. ${unassignResult.modifiedCount} student(s) unassigned.`,
+    });
+  } catch (err) {
+    console.error('Error deleting class:', err.message);
+    res.status(500).json({ success: false, message: 'Server error deleting class.' });
+  }
+});
+
+
 module.exports = router;
+

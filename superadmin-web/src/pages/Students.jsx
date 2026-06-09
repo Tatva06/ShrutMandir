@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { Search, Download, Plus, Trash2, X, Printer } from 'lucide-react';
+import { Search, Download, Plus, Trash2, X, Printer, ChevronLeft, ChevronRight, UserX } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { toast } from '../utils/toast';
 
 export default function Students() {
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedClassFilter, setSelectedClassFilter] = useState('all');
   
   // Modals state
   const [isAddModalOpen, setAddModalOpen] = useState(false);
@@ -32,10 +35,19 @@ export default function Students() {
     }
   };
 
-  const filteredStudents = students.filter(s => 
-    s.name.toLowerCase().includes(search.toLowerCase()) || 
-    (s.classId?.className || s.village || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredStudents = students.filter(s => {
+    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || 
+      (s.classId?.className || s.village || '').toLowerCase().includes(search.toLowerCase());
+    const matchClass = selectedClassFilter === 'all' || s.classId?._id === selectedClassFilter;
+    return matchSearch && matchClass;
+  });
+
+  const PAGE_SIZE = 25;
+  const totalPages = Math.ceil(filteredStudents.length / PAGE_SIZE);
+  const paginatedStudents = filteredStudents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  // Reset to page 1 if filters change
+  useEffect(() => { setCurrentPage(1); }, [search, selectedClassFilter]);
 
   const exportCSV = () => {
     if (students.length === 0) return;
@@ -82,8 +94,8 @@ export default function Students() {
           </div>
         </div>
 
-      <div className="glass-card" style={{ marginBottom: '2rem', padding: '1rem 1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div className="glass-card" style={{ marginBottom: '2rem', padding: '1rem 1.5rem', display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
           <Search size={18} color="var(--text-sub)" />
           <input 
             type="text" 
@@ -92,6 +104,17 @@ export default function Students() {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+        </div>
+        <div style={{ borderLeft: '1px solid var(--border-light)', paddingLeft: '1rem' }}>
+          <select 
+            className="input-field" 
+            style={{ width: '200px', appearance: 'none' }}
+            value={selectedClassFilter}
+            onChange={e => setSelectedClassFilter(e.target.value)}
+          >
+            <option value="all">All Classes</option>
+            {classes.map(c => <option key={c._id} value={c._id}>{c.className}</option>)}
+          </select>
         </div>
       </div>
 
@@ -108,10 +131,10 @@ export default function Students() {
           <tbody>
             {loading ? (
               <tr><td colSpan="4" style={{ textAlign: 'center' }}>Loading…</td></tr>
-            ) : filteredStudents.length === 0 ? (
+            ) : paginatedStudents.length === 0 ? (
               <tr><td colSpan="4" style={{ textAlign: 'center' }}>No students found</td></tr>
             ) : (
-              filteredStudents.map(student => (
+              paginatedStudents.map(student => (
                 <tr key={student._id}>
                   <td style={{ fontWeight: 600 }}>{student.name}</td>
                   <td>{student.classId?.className || student.village || 'Unassigned'}</td>
@@ -131,6 +154,30 @@ export default function Students() {
             )}
           </tbody>
         </table>
+        
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', padding: '1rem', borderTop: '1px solid var(--border-light)' }}>
+            <button 
+              className="btn btn-secondary" 
+              style={{ padding: '0.5rem' }} 
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => p - 1)}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span style={{ fontSize: '0.9rem', color: 'var(--text-sub)' }}>
+              Page {currentPage} of {totalPages}
+            </span>
+            <button 
+              className="btn btn-secondary" 
+              style={{ padding: '0.5rem' }} 
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => p + 1)}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
       </div>
 
       {isAddModalOpen && (
@@ -146,7 +193,7 @@ export default function Students() {
           studentId={selectedStudentId} 
           classes={classes}
           onClose={() => setSelectedStudentId(null)}
-          onUpdate={fetchData}
+          onUpdate={() => { setSelectedStudentId(null); fetchData(); }}
         />
       )}
       </div>
@@ -197,9 +244,10 @@ function AddStudentModal({ classes, onClose, onSuccess }) {
     setLoading(true);
     try {
       await api.post('/students', formData);
+      toast.success('Student added successfully');
       onSuccess();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error adding student');
+      toast.error(err.response?.data?.message || 'Error adding student');
     } finally {
       setLoading(false);
     }
@@ -290,6 +338,7 @@ function AddStudentModal({ classes, onClose, onSuccess }) {
 function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('logs'); // 'logs' or 'edit'
+  const [deleting, setDeleting] = useState(false);
   
   // Edit Form state
   const [editForm, setEditForm] = useState({
@@ -330,7 +379,7 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
         classId: data.classId?._id || ''
       });
     } catch (err) {
-      alert('Error fetching profile');
+      toast.error('Error fetching profile');
       onClose();
     }
   };
@@ -340,14 +389,27 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
     setSaving(true);
     try {
       await api.put(`/students/${studentId}`, editForm);
-      alert('Student details updated successfully!');
+      toast.success('Student details updated successfully!');
       fetchProfile();
       onUpdate();
       setActiveTab('logs');
     } catch (err) {
-      alert(err.response?.data?.message || 'Error updating student profile');
+      toast.error(err.response?.data?.message || 'Error updating student profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const deleteStudent = async () => {
+    if (!window.confirm(`Permanently delete ${profile.name}?\n\nThis will remove all their attendance and activity logs. This action CANNOT be undone.`)) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/students/${studentId}`);
+      toast.success(`${profile.name} deleted successfully.`);
+      onUpdate(); // closes modal and refreshes list
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error deleting student');
+      setDeleting(false);
     }
   };
 
@@ -355,10 +417,11 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
     if(!window.confirm('Delete this activity log? Points will be automatically subtracted.')) return;
     try {
       await api.delete(`/students/${studentId}/activity/${logId}`);
+      toast.success('Log deleted');
       fetchProfile();
       onUpdate();
     } catch (err) {
-      alert('Error deleting log');
+      toast.error('Error deleting log');
     }
   };
 
@@ -366,10 +429,11 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
     if(!window.confirm('Delete this attendance record? Points will be automatically subtracted.')) return;
     try {
       await api.delete(`/students/${studentId}/attendance/${logId}`);
+      toast.success('Record deleted');
       fetchProfile();
       onUpdate();
     } catch (err) {
-      alert('Error deleting log');
+      toast.error('Error deleting log');
     }
   };
 
@@ -388,7 +452,7 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
               <span className="badge badge-green">Total Score: {profile.points} pts</span>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', marginRight: '2.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginRight: '2.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <button 
               type="button"
               onClick={() => setActiveTab('logs')}
@@ -404,6 +468,16 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
               style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
             >
               Edit Details & Class Transfer
+            </button>
+            <button
+              type="button"
+              onClick={deleteStudent}
+              disabled={deleting}
+              className="btn btn-danger"
+              style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
+              title="Permanently delete this student"
+            >
+              <UserX size={14} /> {deleting ? 'Deleting...' : 'Delete Student'}
             </button>
           </div>
         </div>

@@ -16,10 +16,13 @@ router.get('/', async (req, res) => {
     if (req.query.classId) {
       query.classId = req.query.classId;
     }
-    const students = await Student.find(query).populate('classId', 'className ageGroup').sort({ name: 1 });
+    const students = await Student.find(query)
+      .populate('classId', 'className ageGroup')
+      .sort({ name: 1 });
+    const lean = req.query.lean === 'true';
     const formatted = students.map(s => {
       const parts = (s.name || '').trim().split(/\s+/);
-      return {
+      const base = {
         _id: s._id,
         rollNo: s.rollNo,
         name: s.name,
@@ -33,14 +36,17 @@ router.get('/', async (req, res) => {
         gender: s.gender || '',
         dob: s.dob || '',
         village: s.village,
-        classId: s.classId, // Now explicitly assigned
-        classGroupId: { _id: s.village || 'default', name: s.village || 'No Village' }, // Backward compat
+        classId: s.classId,
+        classGroupId: { _id: s.village || 'default', name: s.village || 'No Village' },
         points: s.points,
         totalPoints: s.points,
         qrId: s.rollNo,
-        attendanceLogs: s.attendanceLogs,
-        activityLogs: s.activityLogs,
       };
+      if (!lean) {
+        base.attendanceLogs = s.attendanceLogs;
+        base.activityLogs   = s.activityLogs;
+      }
+      return base;
     });
     res.status(200).json({ success: true, count: formatted.length, data: formatted });
   } catch (err) {
@@ -116,6 +122,19 @@ router.put('/:id', requireAuth, requireSuperAdmin, async (req, res) => {
   }
 });
 
+// ─── DELETE /api/students/:id ─────────────────────────────────────────────────
+// Permanently delete a student and all their logs (SuperAdmin only)
+router.delete('/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const student = await Student.findByIdAndDelete(req.params.id);
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+    res.status(200).json({ success: true, message: `Student "${student.name}" permanently deleted.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error deleting student', error: err.message });
+  }
+});
+
+
 // ─── GET /api/students/:id ────────────────────────────────────────────────────
 // Returns a single student with paginated logs (limits to 50 to prevent crash)
 router.get('/:id', async (req, res) => {
@@ -143,7 +162,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // ─── POST /api/students/:id/attendance ───────────────────────────────────────
-router.post('/:id/attendance', async (req, res) => {
+router.post('/:id/attendance', requireAuth, async (req, res) => {
   try {
     const { status, date, loggedBy } = req.body;
     const logDate = date || todayIST();
@@ -255,7 +274,7 @@ router.put('/:id/attendance-override', requireAuth, requireSuperAdmin, async (re
 });
 
 // ─── POST /api/students/:id/activity ─────────────────────────────────────────
-router.post('/:id/activity', async (req, res) => {
+router.post('/:id/activity', requireAuth, async (req, res) => {
   try {
     const { type, description, pointsAwarded, date, loggedBy } = req.body;
     const logDate = date || todayIST();

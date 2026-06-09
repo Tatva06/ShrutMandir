@@ -1,35 +1,35 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, ActivityIndicator, StyleSheet,
-  SafeAreaView, StatusBar, RefreshControl, TouchableOpacity, Alert,
+  SafeAreaView, StatusBar, RefreshControl, TouchableOpacity, Alert, ScrollView
 } from 'react-native';
 
 import { API_BASE } from '../config';
 
 // Returns today as 'YYYY-MM-DD' in local time
 function todayString() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm   = String(d.getMonth() + 1).padStart(2, '0');
-  const dd   = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 }
 
 export default function DashboardScreen() {
   const [students, setStudents]   = useState([]);
+  const [classes, setClasses]     = useState([]);
+  const [selectedClass, setSelectedClass] = useState('all');
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     try {
-      const res  = await fetch(`${API_BASE}/students`);
-      const json = await res.json();
-      if (json.success) {
-        setStudents(json.data);
-      } else {
-        Alert.alert('Error', 'Could not load student data.');
-      }
+      const [stuRes, clsRes] = await Promise.all([
+        fetch(`${API_BASE}/students`),
+        fetch(`${API_BASE}/classes`)
+      ]);
+      const stuJson = await stuRes.json();
+      const clsJson = await clsRes.json();
+      
+      if (stuJson.success) setStudents(stuJson.data);
+      if (clsJson.success) setClasses(clsJson.data);
     } catch {
       Alert.alert('Network Error', 'Could not reach the server.');
     } finally {
@@ -43,23 +43,27 @@ export default function DashboardScreen() {
   const today = todayString();
 
   // ── Derived statistics ─────────────────────────────────────────────────────
-  const totalStudents = students.length;
+  const filteredStudents = selectedClass === 'all' 
+    ? students 
+    : students.filter(s => s.classId && s.classId._id === selectedClass);
 
-  const presentToday = students.filter(s =>
+  const totalStudents = filteredStudents.length;
+
+  const presentToday = filteredStudents.filter(s =>
     (s.attendanceLogs || []).some(l => l.date === today && l.status === 'Present')
   ).length;
 
-  const lateToday = students.filter(s =>
+  const lateToday = filteredStudents.filter(s =>
     (s.attendanceLogs || []).some(l => l.date === today && l.status === 'Late')
   ).length;
 
-  const gathasToday = students.reduce((acc, s) =>
+  const gathasToday = filteredStudents.reduce((acc, s) =>
     acc + (s.activityLogs || []).filter(l => l.date === today && l.type === 'Gatha').length,
     0
   );
 
   // Leaderboard — sorted descending by points
-  const leaderboard = [...students].sort((a, b) => (b.points || 0) - (a.points || 0));
+  const leaderboard = [...filteredStudents].sort((a, b) => (b.points || 0) - (a.points || 0));
 
   if (loading) {
     return (
@@ -95,6 +99,25 @@ export default function DashboardScreen() {
               <StatCard icon="🕐" value={lateToday}      label="Late Today"     color="#f59e0b" />
               <StatCard icon="🙏" value={gathasToday}    label="Gathas Today"   color="#f472b6" />
             </View>
+
+            {/* ── Filter Bar ── */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+              <TouchableOpacity
+                style={[styles.filterChip, selectedClass === 'all' && styles.filterChipActive]}
+                onPress={() => setSelectedClass('all')}
+              >
+                <Text style={[styles.filterChipText, selectedClass === 'all' && styles.filterChipTextActive]}>All Classes</Text>
+              </TouchableOpacity>
+              {classes.map(c => (
+                <TouchableOpacity
+                  key={c._id}
+                  style={[styles.filterChip, selectedClass === c._id && styles.filterChipActive]}
+                  onPress={() => setSelectedClass(c._id)}
+                >
+                  <Text style={[styles.filterChipText, selectedClass === c._id && styles.filterChipTextActive]}>{c.className}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
             {/* ── Leaderboard Header ── */}
             <Text style={styles.sectionLabel}>LEADERBOARD — TOP STUDENTS</Text>
@@ -157,6 +180,14 @@ const styles = StyleSheet.create({
   pageTitle:   { color: '#e0e7ff', fontSize: 26, fontWeight: '800', marginBottom: 4 },
   dateLabel:   { color: '#818cf8', fontSize: 13, marginBottom: 20 },
   sectionLabel:{ color: '#6366f1', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12, marginTop: 8 },
+
+  // Filters
+  filterScroll: { marginBottom: 20 },
+  filterContent: { gap: 10, paddingRight: 20 },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#1e1b4b', borderWidth: 1, borderColor: '#312e81' },
+  filterChipActive: { backgroundColor: '#4f46e5', borderColor: '#6366f1' },
+  filterChipText: { color: '#818cf8', fontSize: 13, fontWeight: '600' },
+  filterChipTextActive: { color: '#ffffff' },
 
   // Stats grid
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 28 },

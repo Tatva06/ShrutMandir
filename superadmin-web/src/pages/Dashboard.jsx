@@ -26,7 +26,7 @@ export default function Dashboard() {
       setStudents(studentRes.data.data);
       setStats({
         totalStudents: studentRes.data.count,
-        classesCount: classRes.data.count
+        classesCount: classRes.data.count || (classRes.data.data || []).length
       });
       setLastUpdated(new Date());
     } catch (err) {
@@ -126,18 +126,18 @@ export default function Dashboard() {
 
         <div className="glass-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Today Absent</h3>
-            <Activity size={20} color="var(--accent-red)" />
+            <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Total Classes</h3>
+            <BookOpen size={20} color="var(--accent-amber)" />
           </div>
-          <p style={{ fontSize: '2rem', fontWeight: 700, marginTop: '0.5rem', color: 'var(--accent-red)' }}>{absentCount}</p>
+          <p style={{ fontSize: '2rem', fontWeight: 700, marginTop: '0.5rem', color: 'var(--accent-amber)' }}>{stats.classesCount}</p>
         </div>
 
         <div className="glass-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Pending</h3>
-            <Clock size={20} color="var(--accent-amber)" />
+            <h3 style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Today Late</h3>
+            <Activity size={20} color="var(--accent-amber)" />
           </div>
-          <p style={{ fontSize: '2rem', fontWeight: 700, marginTop: '0.5rem', color: 'var(--accent-amber)' }}>{pendingCount}</p>
+          <p style={{ fontSize: '2rem', fontWeight: 700, marginTop: '0.5rem', color: 'var(--accent-amber)' }}>{lateCount}</p>
         </div>
       </div>
 

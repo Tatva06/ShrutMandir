@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Modal, ScrollView, TextInput, Animated,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_BASE } from '../config';
@@ -13,11 +14,7 @@ const SCAN_COOLDOWN_MS = 1200;
 const MODES = ['Attendance', 'Gatha', 'General'];
 
 function todayString() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 }
 
 export default function ScannerScreen({ navigation }) {
@@ -27,6 +24,7 @@ export default function ScannerScreen({ navigation }) {
   const [processing, setProcessing] = useState(false);
   const cooldownRef = useRef(null);
   const [teacherName, setTeacherName] = useState('Unknown Teacher');
+  const [userToken, setUserToken] = useState(null);
   
   // Dynamic Settings states (initialized with standard defaults)
   const [gathaList, setGathaList] = useState([
@@ -55,10 +53,12 @@ export default function ScannerScreen({ navigation }) {
     const loadTeacherDataAndSettings = async () => {
       try {
         const userDataStr = await AsyncStorage.getItem('userData');
+        const token = await AsyncStorage.getItem('userToken');
         if (userDataStr) {
           const userData = JSON.parse(userDataStr);
           setTeacherName(userData.name || 'Unknown Teacher');
         }
+        if (token) setUserToken(token);
 
         // Fetch settings dynamically from the live database
         const settingsRes = await fetch(`${API_BASE}/settings`);
@@ -94,12 +94,13 @@ export default function ScannerScreen({ navigation }) {
     ]).start(() => setToast(null));
   };
 
-  // ── Find student by rollNo ───────────────────────────────────────────────
+  // ── Find student by rollNo (direct lookup — no full list fetch) ───────────────────
   const findStudent = async (rollNo) => {
-    const res = await fetch(`${API_BASE}/students`);
+    const res = await fetch(`${API_BASE}/students/by-roll/${encodeURIComponent(String(rollNo).trim())}`);
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error('Server error looking up student.');
     const json = await res.json();
-    if (!json.success) throw new Error('Could not fetch students.');
-    return json.data.find(s => String(s.rollNo).trim() === String(rollNo).trim()) ?? null;
+    return json.success ? json.data : null;
   };
 
   // ── Check if already marked today ───────────────────────────────────────
@@ -125,6 +126,7 @@ export default function ScannerScreen({ navigation }) {
       // ── ATTENDANCE MODE ────────────────────────────────────────────────
       if (mode === 'Attendance') {
         if (alreadyMarkedToday(student)) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           showToast(`⚠️  ${student.name} already marked today`, '#f59e0b');
           return;
         }
@@ -136,16 +138,21 @@ export default function ScannerScreen({ navigation }) {
 
         const res = await fetch(`${API_BASE}/students/${student._id}/attendance`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(userToken ? { Authorization: `Bearer ${userToken}` } : {}),
+          },
           body: JSON.stringify({ status, date: todayString(), loggedBy: teacherName }),
         });
-        const data = await res.json();
+        const respData = await res.json();
         
         if (!res.ok) {
-          showToast(`⚠️  ${data.message || 'Error marking attendance'}`, '#f59e0b');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          showToast(`⚠️  ${respData.message || 'Error marking attendance'}`, '#f59e0b');
           return;
         }
 
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         showToast(
           isLate
             ? `🕐  ${student.name} — Late +${pts} pts`
@@ -171,6 +178,7 @@ export default function ScannerScreen({ navigation }) {
         });
       }
     } catch (err) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       showToast('❌ Error — try again', '#ef4444');
     } finally {
       setProcessing(false);
@@ -191,20 +199,24 @@ export default function ScannerScreen({ navigation }) {
     }
     setGathaSubmitting(true);
     try {
-      await Promise.all(
-        items.map(async g => {
-          const res = await fetch(`${API_BASE}/students/${modalStudent._id}/activity`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'Gatha', description: g.name, pointsAwarded: g.pts, date: todayString(), loggedBy: teacherName }),
-          });
-          if (!res.ok) throw new Error('Failed to save activity');
-        })
-      );
+      // Bulk POST — one request per Gatha type (activity)
+      for (const g of items) {
+        const res = await fetch(`${API_BASE}/students/${modalStudent._id}/activity`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(userToken ? { Authorization: `Bearer ${userToken}` } : {}),
+          },
+          body: JSON.stringify({ type: 'Gatha', description: g.name, pointsAwarded: g.pts, date: todayString(), loggedBy: teacherName }),
+        });
+        if (!res.ok) throw new Error('Failed to save activity');
+      }
       const totalPts = items.reduce((a, g) => a + g.pts, 0);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setGathaModal(false);
       showToast(`✅  +${totalPts} pts awarded to ${modalStudent.name}`, '#22c55e');
     } catch {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', 'Could not save Gatha points.');
     } finally {
       setGathaSubmitting(false);

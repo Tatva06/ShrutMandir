@@ -97,6 +97,14 @@ export default function ClassesHomeScreen({ navigation }) {
                   <View style={[styles.ageBadge, { backgroundColor: color + '22', borderColor: color }]}>
                     <Text style={[styles.ageBadgeText, { color }]}>{ageGroupLabel(item.ageGroup)}</Text>
                   </View>
+                  <View style={[styles.ageBadge, { backgroundColor: '#312e81', borderColor: '#4f46e5' }]}>
+                    <Text style={[styles.ageBadgeText, { color: '#a5b4fc' }]}>👥 {item.studentCount ?? 0} Students</Text>
+                  </View>
+                  {item.isLockedToday && (
+                    <View style={[styles.ageBadge, { backgroundColor: '#22c55e22', borderColor: '#22c55e' }]}>
+                      <Text style={[styles.ageBadgeText, { color: '#22c55e' }]}>✅ Done</Text>
+                    </View>
+                  )}
                 </View>
               </View>
 

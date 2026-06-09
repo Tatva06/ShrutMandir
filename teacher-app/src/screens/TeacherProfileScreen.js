@@ -1,9 +1,33 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE } from '../config';
 
 export default function TeacherProfileScreen({ userData, onLogout }) {
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
   const nameParts = (userData?.name || 'Teacher').trim().split(/\s+/);
   const initials = (nameParts[0]?.[0] ?? '') + (nameParts[1]?.[0] ?? '');
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+        if (!token) return;
+        const res = await fetch(`${API_BASE}/teachers/my-stats`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const json = await res.json();
+        if (json.success) setStats(json.data);
+      } catch (err) {
+        console.error('Failed to fetch stats:', err);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    fetchStats();
+  }, []);
 
   const handleLogoutPress = () => {
     if (onLogout) {
@@ -27,6 +51,24 @@ export default function TeacherProfileScreen({ userData, onLogout }) {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Username:</Text>
             <Text style={styles.infoValue}>{userData?.username || '—'}</Text>
+          </View>
+
+          <View style={styles.statsContainer}>
+            <Text style={styles.statsTitle}>YOUR ACTIVITY</Text>
+            {loadingStats ? (
+              <ActivityIndicator color="#6366f1" style={{ marginTop: 10 }} />
+            ) : (
+              <View style={styles.statsRow}>
+                <View style={styles.statBox}>
+                  <Text style={styles.statBoxValue}>{stats?.totalSessions || 0}</Text>
+                  <Text style={styles.statBoxLabel}>Attendances</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statBoxValue}>{stats?.totalGathas || 0}</Text>
+                  <Text style={styles.statBoxLabel}>Gathas</Text>
+                </View>
+              </View>
+            )}
           </View>
         </View>
 
@@ -83,4 +125,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  statsContainer: {
+    width: '100%',
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#312e81',
+  },
+  statsTitle: { color: '#6366f1', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, marginBottom: 12, textAlign: 'center' },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  statBox: {
+    flex: 1,
+    backgroundColor: '#1e1b4b',
+    borderWidth: 1,
+    borderColor: '#4338ca',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+  },
+  statBoxValue: { color: '#e0e7ff', fontSize: 24, fontWeight: '800', marginBottom: 4 },
+  statBoxLabel: { color: '#818cf8', fontSize: 12, fontWeight: '600' },
 });

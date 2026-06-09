@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { UserPlus, Trash2, Shield, User } from 'lucide-react';
+import { UserPlus, Trash2, Shield, User, Key } from 'lucide-react';
+import { toast } from '../utils/toast';
 
 export default function Teachers() {
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setAddModalOpen] = useState(false);
+  const [resetTeacher, setResetTeacher] = useState(null);
 
   useEffect(() => {
     fetchTeachers();
@@ -27,9 +29,10 @@ export default function Teachers() {
     if (!window.confirm(`Are you sure you want to delete ${name}'s login?`)) return;
     try {
       await api.delete(`/teachers/${id}`);
+      toast.success('Teacher deleted successfully');
       fetchTeachers();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error deleting teacher');
+      toast.error(err.response?.data?.message || 'Error deleting teacher');
     }
   };
 
@@ -73,7 +76,14 @@ export default function Teachers() {
                       </span>
                     )}
                   </td>
-                  <td>
+                  <td style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button 
+                      onClick={() => setResetTeacher({ id: teacher._id, name: teacher.name })}
+                      className="btn btn-secondary" 
+                      style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
+                    >
+                      <Key size={14} /> Reset Password
+                    </button>
                     <button 
                       onClick={() => deleteTeacher(teacher._id, teacher.name)}
                       className="btn btn-danger" 
@@ -95,6 +105,56 @@ export default function Teachers() {
           onSuccess={() => { setAddModalOpen(false); fetchTeachers(); }} 
         />
       )}
+
+      {resetTeacher && (
+        <ResetPasswordModal
+          teacher={resetTeacher}
+          onClose={() => setResetTeacher(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Reset Password Modal ───────────────────────────────────────────────────────
+
+function ResetPasswordModal({ teacher, onClose }) {
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.patch(`/teachers/${teacher.id}/reset-password`, { newPassword: password });
+      toast.success(`Password reset for ${teacher.name}`);
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error resetting password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
+      <div className="glass-card" style={{ width: 400, padding: '2rem', position: 'relative' }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+        <h2 style={{ marginBottom: '1.5rem' }}>Reset Password</h2>
+        <p style={{ color: 'var(--text-sub)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+          Resetting password for <strong>{teacher.name}</strong>
+        </p>
+        
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>New Password</label>
+            <input type="text" className="input-field" required value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 4 characters" minLength={4} />
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem' }} disabled={loading}>
+            {loading ? 'Resetting...' : 'Reset Password'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -110,9 +170,10 @@ function AddTeacherModal({ onClose, onSuccess }) {
     setLoading(true);
     try {
       await api.post('/teachers', formData);
+      toast.success('Teacher created successfully');
       onSuccess();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error adding teacher');
+      toast.error(err.response?.data?.message || 'Error adding teacher');
     } finally {
       setLoading(false);
     }

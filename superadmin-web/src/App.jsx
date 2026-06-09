@@ -7,10 +7,13 @@ import Students from './pages/Students';
 import Teachers from './pages/Teachers';
 import Settings from './pages/Settings';
 import Attendance from './pages/Attendance';
+import ToastContainer from './components/ToastContainer';
 
 function App() {
   return (
-    <Router>
+    <>
+      <ToastContainer />
+      <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
         
@@ -26,6 +29,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
+    </>
   );
 }
 
