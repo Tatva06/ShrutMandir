@@ -106,6 +106,7 @@ export default function ClassListScreen({ route, navigation }) {
       // Get teacher name from AsyncStorage
       const userDataStr = await AsyncStorage.getItem('userData');
       const teacherName = userDataStr ? JSON.parse(userDataStr).name : 'Unknown Teacher';
+      const token = await AsyncStorage.getItem('userToken');
 
       // Prepare bulk data payload
       const attendanceData = students.map(s => ({
@@ -118,7 +119,7 @@ export default function ClassListScreen({ route, navigation }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(userToken ? { Authorization: `Bearer ${userToken}` } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ date: today, loggedBy: teacherName, attendanceData }),
       });
@@ -137,7 +138,7 @@ export default function ClassListScreen({ route, navigation }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(userToken ? { Authorization: `Bearer ${userToken}` } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ date: today }),
       });

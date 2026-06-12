@@ -133,13 +133,14 @@ export default function StudentProfileScreen({ route, navigation }) {
 
     setSubmitting(true);
     try {
+      const token = await AsyncStorage.getItem('userToken');
       await Promise.all(
         items.map(item =>
           fetch(`${API_BASE}/students/${student._id}/activity`, {
             method:  'POST',
             headers: {
               'Content-Type': 'application/json',
-              ...(userToken ? { Authorization: `Bearer ${userToken}` } : {}),
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body:    JSON.stringify({ ...item, date: todayString(), loggedBy: teacherName }),
           })

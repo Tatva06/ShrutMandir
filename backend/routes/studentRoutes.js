@@ -102,7 +102,7 @@ router.post('/', requireAuth, requireSuperAdmin, async (req, res) => {
     if (!rollNo || !name) return res.status(400).json({ success: false, message: 'rollNo and name are required' });
 
     const student = await Student.create({
-      rollNo, name, phoneNumber, altPhone, fatherName, motherName, age, gender, dob, village, classId, points: points || 0
+      rollNo, name, phoneNumber, altPhone, fatherName, motherName, age, gender, dob, village, classId: classId || undefined, points: points || 0
     });
     res.status(201).json({ success: true, data: student });
   } catch (err) {

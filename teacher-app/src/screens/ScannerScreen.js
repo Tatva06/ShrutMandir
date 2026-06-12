@@ -136,11 +136,12 @@ export default function ScannerScreen({ navigation }) {
         const status = isLate ? 'Late' : 'Present';
         const pts = isLate ? 5 : 10;
 
+        const token = await AsyncStorage.getItem('userToken');
         const res = await fetch(`${API_BASE}/students/${student._id}/attendance`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(userToken ? { Authorization: `Bearer ${userToken}` } : {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({ status, date: todayString(), loggedBy: teacherName }),
         });
@@ -200,12 +201,13 @@ export default function ScannerScreen({ navigation }) {
     setGathaSubmitting(true);
     try {
       // Bulk POST — one request per Gatha type (activity)
+      const token = await AsyncStorage.getItem('userToken');
       for (const g of items) {
         const res = await fetch(`${API_BASE}/students/${modalStudent._id}/activity`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(userToken ? { Authorization: `Bearer ${userToken}` } : {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({ type: 'Gatha', description: g.name, pointsAwarded: g.pts, date: todayString(), loggedBy: teacherName }),
         });
