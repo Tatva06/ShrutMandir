@@ -16,7 +16,10 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'https://shrut-mandir.vercel.app',
+  'https://shrut-mandir-superadmin.vercel.app',
+  'https://shrut-mandir-teacher.vercel.app',
   process.env.SUPERADMIN_URL,
+  process.env.TEACHER_URL,
 ].filter(Boolean);
 
 app.use(cors({
@@ -29,9 +32,36 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Database connection verification middleware
+app.use(async (req, res, next) => {
+  if (req.path === '/' || req.path === '/api/debug-db') {
+    return next();
+  }
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Database connection failed', 
+      error: err.message 
+    });
+  }
+});
+
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.json({ message: 'ShrutMandir API is running 🎵' });
+});
+
+app.get('/api/debug-db', (req, res) => {
+  const uri = process.env.MONGO_URI || 'not set';
+  const obscured = uri.replace(/:([^@]+)@/, ':***@');
+  res.json({
+    uri: obscured,
+    readyState: mongoose.connection.readyState,
+    states: { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' }
+  });
 });
 
 app.use('/api/students', studentRoutes);
