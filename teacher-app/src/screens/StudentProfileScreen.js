@@ -39,6 +39,7 @@ export default function StudentProfileScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab,  setActiveTab]  = useState('Attendance'); // 'Attendance' | 'Activity'
   const [teacherName, setTeacherName] = useState('Unknown Teacher');
+  const [userToken,   setUserToken]   = useState('');
   
   // Dynamic Settings states (initialized with standard defaults)
   const [gathaList, setGathaList] = useState([
@@ -54,10 +55,12 @@ export default function StudentProfileScreen({ route, navigation }) {
     const loadTeacherDataAndSettings = async () => {
       try {
         const userDataStr = await AsyncStorage.getItem('userData');
+        const token = await AsyncStorage.getItem('userToken');
         if (userDataStr) {
           const userData = JSON.parse(userDataStr);
           setTeacherName(userData.name || 'Unknown Teacher');
         }
+        if (token) setUserToken(token);
 
         // Fetch settings dynamically from the live database
         const settingsRes = await fetch(`${API_BASE}/settings`);
@@ -134,7 +137,10 @@ export default function StudentProfileScreen({ route, navigation }) {
         items.map(item =>
           fetch(`${API_BASE}/students/${student._id}/activity`, {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(userToken ? { Authorization: `Bearer ${userToken}` } : {}),
+            },
             body:    JSON.stringify({ ...item, date: todayString(), loggedBy: teacherName }),
           })
         )

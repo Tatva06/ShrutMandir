@@ -31,6 +31,7 @@ export default function ClassListScreen({ route, navigation }) {
   const [attendanceMode, setAttendanceMode] = useState(false);
   const [statusMap,      setStatusMap]      = useState({});   // { [studentId]: 'Present'|'Absent'|'Late' }
   const [submitting,     setSubmitting]     = useState(false);
+  const [userToken,      setUserToken]      = useState('');
 
   const today = todayString();
 
@@ -38,6 +39,10 @@ export default function ClassListScreen({ route, navigation }) {
   const fetchAll = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     try {
+      // Load token from AsyncStorage
+      const token = await AsyncStorage.getItem('userToken');
+      if (token) setUserToken(token);
+
       const [studRes, lockRes] = await Promise.all([
         fetch(`${API_BASE}/students`),
         fetch(`${API_BASE}/classes/${classId}/attendance-locked/${today}`),
@@ -111,7 +116,10 @@ export default function ClassListScreen({ route, navigation }) {
       // Fire a single bulk request
       const bulkRes = await fetch(`${API_BASE}/classes/${classId}/bulk-attendance`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(userToken ? { Authorization: `Bearer ${userToken}` } : {}),
+        },
         body: JSON.stringify({ date: today, loggedBy: teacherName, attendanceData }),
       });
 
@@ -127,7 +135,10 @@ export default function ClassListScreen({ route, navigation }) {
       // Lock attendance for this class/date
       await fetch(`${API_BASE}/classes/${classId}/lock-attendance`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(userToken ? { Authorization: `Bearer ${userToken}` } : {}),
+        },
         body: JSON.stringify({ date: today }),
       });
 
