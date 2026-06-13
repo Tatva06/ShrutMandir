@@ -1,44 +1,30 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  StatusBar,
-  KeyboardAvoidingView,
-  Platform,
+  View, Text, StyleSheet, TextInput, TouchableOpacity,
+  ActivityIndicator, StatusBar, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import { API_BASE } from '../config';
 
 export default function LoginScreen({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState('');
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
       setError('Please fill in all fields.');
       return;
     }
-
     setError('');
     setLoading(true);
-
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
+      const res  = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: username.trim(),
-          password: password.trim(),
-        }),
+        body: JSON.stringify({ username: username.trim(), password: password.trim() }),
       });
-
       const json = await res.json();
 
       if (!res.ok || !json.success) {
@@ -47,17 +33,11 @@ export default function LoginScreen({ onLoginSuccess }) {
         return;
       }
 
-      // Store credentials in AsyncStorage
       await AsyncStorage.setItem('userToken', json.token);
       await AsyncStorage.setItem('userData', JSON.stringify(json.user));
-
       setLoading(false);
-      // Trigger callback to re-render navigation stack
-      if (onLoginSuccess) {
-        onLoginSuccess();
-      }
-    } catch (err) {
-      console.error('Login Error:', err);
+      if (onLoginSuccess) onLoginSuccess();
+    } catch {
       setError('Network error. Please check your connection.');
       setLoading(false);
     }
@@ -68,25 +48,34 @@ export default function LoginScreen({ onLoginSuccess }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#0f0e17" />
+      <StatusBar barStyle="light-content" backgroundColor="#0f0d15" />
+
+      {/* Background glow orbs */}
+      <View style={styles.glowOrb1} />
+      <View style={styles.glowOrb2} />
+
       <View style={styles.card}>
-        <View style={styles.header}>
-          <Text style={styles.logo}>🎵 ShrutMandir</Text>
-          <Text style={styles.subtitle}>Teacher Portal</Text>
+        {/* Logo */}
+        <View style={styles.logoWrap}>
+          <View style={styles.logoIcon}>
+            <Text style={styles.logoEmoji}>🎵</Text>
+          </View>
+          <Text style={styles.logoText}>ShrutMandir</Text>
+          <Text style={styles.logoSub}>TEACHER PORTAL</Text>
         </View>
 
         {error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>⚠  {error}</Text>
           </View>
         ) : null}
 
         <View style={styles.form}>
-          <View style={styles.inputGroup}>
+          <View style={styles.field}>
             <Text style={styles.label}>Username</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your username..."
+              placeholder="Enter your username"
               placeholderTextColor="#4c4f6b"
               autoCapitalize="none"
               autoCorrect={false}
@@ -95,7 +84,7 @@ export default function LoginScreen({ onLoginSuccess }) {
             />
           </View>
 
-          <View style={styles.inputGroup}>
+          <View style={styles.field}>
             <Text style={styles.label}>Password</Text>
             <TextInput
               style={styles.input}
@@ -113,13 +102,12 @@ export default function LoginScreen({ onLoginSuccess }) {
             style={[styles.btn, loading && styles.btnDisabled]}
             onPress={handleLogin}
             disabled={loading}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
-            {loading ? (
-              <ActivityIndicator color="#ffffff" size="small" />
-            ) : (
-              <Text style={styles.btnText}>Sign In</Text>
-            )}
+            {loading
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={styles.btnText}>Sign In →</Text>
+            }
           </TouchableOpacity>
         </View>
       </View>
@@ -129,93 +117,71 @@ export default function LoginScreen({ onLoginSuccess }) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#0f0e17',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
+    flex: 1, backgroundColor: '#0f0d15',
+    justifyContent: 'center', alignItems: 'center', padding: 24,
+    overflow: 'hidden',
   },
+
+  // Background glow orbs (decorative)
+  glowOrb1: {
+    position: 'absolute', width: 300, height: 300, borderRadius: 150,
+    backgroundColor: 'rgba(134,130,255,0.07)', top: -80, left: -80,
+  },
+  glowOrb2: {
+    position: 'absolute', width: 200, height: 200, borderRadius: 100,
+    backgroundColor: 'rgba(74,222,128,0.04)', bottom: -40, right: -40,
+  },
+
   card: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: '#1e1b4b',
-    borderRadius: 24,
-    padding: 32,
-    borderWidth: 1,
-    borderColor: '#312e81',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 8,
+    width: '100%', maxWidth: 420,
+    backgroundColor: 'rgba(43,41,50,0.55)',
+    borderRadius: 28, padding: 36,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
+
+  // Logo
+  logoWrap: { alignItems: 'center', marginBottom: 36 },
+  logoIcon: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: 'rgba(134,130,255,0.15)',
+    borderWidth: 1, borderColor: 'rgba(134,130,255,0.35)',
+    justifyContent: 'center', alignItems: 'center', marginBottom: 14,
   },
-  logo: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#818cf8',
-    marginBottom: 6,
+  logoEmoji: { fontSize: 32 },
+  logoText: {
+    fontSize: 26, fontWeight: '800', color: '#e6e0ec',
+    letterSpacing: -0.5, marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#4c4f6b',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
+  logoSub: {
+    fontSize: 11, fontWeight: '700', color: '#918fa0',
+    textTransform: 'uppercase', letterSpacing: 2,
   },
-  form: {
-    gap: 20,
+
+  // Error
+  errorBox: {
+    backgroundColor: 'rgba(251,113,133,0.1)', borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: 'rgba(251,113,133,0.25)', marginBottom: 20,
   },
-  inputGroup: {
-    gap: 8,
-  },
+  errorText: { color: '#FB7185', fontSize: 13, fontWeight: '600', textAlign: 'center' },
+
+  form: { gap: 18 },
+  field: { gap: 8 },
   label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#818cf8',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    fontSize: 11, fontWeight: '700', color: '#8682ff',
+    textTransform: 'uppercase', letterSpacing: 1,
   },
   input: {
-    backgroundColor: '#0f0e17',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#312e81',
-    color: '#e0e7ff',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
+    backgroundColor: 'rgba(15,13,21,0.8)',
+    borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    color: '#e6e0ec', paddingHorizontal: 16, paddingVertical: 14, fontSize: 15,
   },
   btn: {
-    backgroundColor: '#6366f1',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 12,
+    backgroundColor: '#8682ff',
+    borderRadius: 14, paddingVertical: 16,
+    alignItems: 'center', marginTop: 8,
+    shadowColor: '#8682ff', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 14,
+    elevation: 6,
   },
-  btnDisabled: {
-    opacity: 0.6,
-  },
-  btnText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  errorContainer: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-    marginBottom: 20,
-  },
-  errorText: {
-    color: '#ef4444',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
+  btnDisabled: { opacity: 0.6 },
+  btnText: { color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
 });

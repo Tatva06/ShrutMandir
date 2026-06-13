@@ -1,24 +1,29 @@
 {
   "expo": {
-    "name": "teacher-app",
+    "name": "ShrutMandir — Teacher",
     "slug": "teacher-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0f0d15",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "backgroundColor": "#0f0d15",
+      "title": "ShrutMandir — Teacher Portal",
+      "description": "ShrutMandir Teacher Portal — Attendance and Activity Management",
+      "themeColor": "#8682ff",
+      "lang": "en"
     },
     "plugins": []
   }

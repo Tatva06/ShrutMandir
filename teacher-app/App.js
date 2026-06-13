@@ -56,8 +56,9 @@ export default function App() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0f0e17', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#818cf8" size="large" />
+      <View style={{ flex: 1, backgroundColor: '#0f0d15', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+        <ActivityIndicator color="#8682ff" size="large" />
+        <Text style={{ color: '#918fa0', fontSize: 14 }}>Loading…</Text>
       </View>
     );
   }
@@ -67,9 +68,11 @@ export default function App() {
     return (
       <Stack.Navigator
         screenOptions={{
-          headerStyle:      { backgroundColor: '#1e1b4b' },
-          headerTintColor:  '#e0e7ff',
-          headerTitleStyle: { fontWeight: '700', fontSize: 18 },
+          headerStyle:      { backgroundColor: '#0f0d15' },
+          headerTintColor:  '#c3c0ff',
+          headerTitleStyle: { fontWeight: '700', fontSize: 18, color: '#e6e0ec' },
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: '#0f0d15' },
         }}
       >
         <Stack.Screen
@@ -106,13 +109,14 @@ export default function App() {
           screenOptions={{
             headerShown: false,
             tabBarStyle: {
-              backgroundColor: '#1e1b4b',
-              borderTopColor:  '#312e81',
+              backgroundColor: '#0f0d15',
+              borderTopColor:  'rgba(255,255,255,0.06)',
+              borderTopWidth:  1,
               paddingBottom:   4,
               height:          60,
             },
-            tabBarActiveTintColor:   '#818cf8',
-            tabBarInactiveTintColor: '#4c4f6b',
+            tabBarActiveTintColor:   '#c3c0ff',
+            tabBarInactiveTintColor: '#4c4a60',
             tabBarLabelStyle:        { fontSize: 11, fontWeight: '600', marginBottom: 4 },
           }}
         >
