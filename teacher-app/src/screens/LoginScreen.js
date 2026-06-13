@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE } from '../config';
+import LegalFooter from '../components/LegalFooter';
 
 export default function LoginScreen({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
@@ -111,6 +112,8 @@ export default function LoginScreen({ onLoginSuccess }) {
           </TouchableOpacity>
         </View>
       </View>
+      
+      <LegalFooter />
     </KeyboardAvoidingView>
   );
 }

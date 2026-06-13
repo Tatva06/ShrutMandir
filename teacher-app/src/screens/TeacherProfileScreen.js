@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE } from '../config';
+import LegalFooter from '../components/LegalFooter';
 
 export default function TeacherProfileScreen({ userData, onLogout }) {
   const [stats, setStats] = useState(null);
@@ -75,75 +76,86 @@ export default function TeacherProfileScreen({ userData, onLogout }) {
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogoutPress} activeOpacity={0.8}>
           <Text style={styles.logoutBtnText}>Log Out</Text>
         </TouchableOpacity>
+
+        <LegalFooter />
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0e17' },
+  container: { flex: 1, backgroundColor: '#0f0d15' },
   content: { padding: 20, flex: 1 },
-  pageTitle: { color: '#e0e7ff', fontSize: 26, fontWeight: '800', marginBottom: 24, marginTop: 10 },
+  pageTitle: { color: '#e6e0ec', fontSize: 26, fontWeight: '800', marginBottom: 24, marginTop: 10 },
   
   card: {
-    backgroundColor: '#1e1b4b',
-    borderRadius: 16,
+    backgroundColor: 'rgba(44,38,77,0.4)',
+    borderRadius: 24,
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#312e81',
+    borderColor: 'rgba(255,255,255,0.08)',
     marginBottom: 30,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#4338ca',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(44,38,77,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(134,130,255,0.3)',
+    shadowColor: '#8682ff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 5,
   },
-  avatarText: { color: '#e0e7ff', fontSize: 28, fontWeight: '700' },
-  name: { color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 4 },
-  role: { color: '#818cf8', fontSize: 14, fontWeight: '600', marginBottom: 24, textTransform: 'uppercase', letterSpacing: 1 },
+  avatarText: { color: '#c3c0ff', fontSize: 32, fontWeight: '800' },
+  name: { color: '#e6e0ec', fontSize: 24, fontWeight: '800', marginBottom: 4, letterSpacing: -0.5 },
+  role: { color: '#8682ff', fontSize: 13, fontWeight: '700', marginBottom: 24, textTransform: 'uppercase', letterSpacing: 1 },
   
   infoRow: {
     flexDirection: 'row',
     width: '100%',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: '#312e81',
+    borderTopColor: 'rgba(255,255,255,0.05)',
   },
-  infoLabel: { color: '#a5b4fc', fontSize: 15 },
-  infoValue: { color: '#e0e7ff', fontSize: 15, fontWeight: '600' },
+  infoLabel: { color: '#918fa0', fontSize: 15 },
+  infoValue: { color: '#e6e0ec', fontSize: 15, fontWeight: '600' },
 
   logoutBtn: {
-    backgroundColor: '#ef4444',
-    borderRadius: 12,
+    backgroundColor: 'rgba(251,113,133,0.1)',
+    borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(251,113,133,0.3)',
   },
-  logoutBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  logoutBtnText: { color: '#FB7185', fontSize: 16, fontWeight: '700' },
 
   statsContainer: {
     width: '100%',
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#312e81',
+    borderTopColor: 'rgba(255,255,255,0.05)',
   },
-  statsTitle: { color: '#6366f1', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, marginBottom: 12, textAlign: 'center' },
+  statsTitle: { color: '#8682ff', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, marginBottom: 16, textAlign: 'center' },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   statBox: {
     flex: 1,
-    backgroundColor: '#1e1b4b',
+    backgroundColor: 'rgba(44,38,77,0.6)',
     borderWidth: 1,
-    borderColor: '#4338ca',
-    borderRadius: 12,
-    padding: 12,
+    borderColor: 'rgba(134,130,255,0.2)',
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
   },
-  statBoxValue: { color: '#e0e7ff', fontSize: 24, fontWeight: '800', marginBottom: 4 },
-  statBoxLabel: { color: '#818cf8', fontSize: 12, fontWeight: '600' },
+  statBoxValue: { color: '#fbbf24', fontSize: 28, fontWeight: '800', marginBottom: 4 },
+  statBoxLabel: { color: '#c7c4d6', fontSize: 12, fontWeight: '600' },
 });

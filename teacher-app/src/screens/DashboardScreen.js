@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 
 import { API_BASE } from '../config';
+import LegalFooter from '../components/LegalFooter';
 
 // Returns today as 'YYYY-MM-DD' in local time
 function todayString() {
@@ -128,6 +129,8 @@ export default function DashboardScreen() {
         )}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No students found.</Text>
+        ListFooterComponent={
+          <LegalFooter />
         }
       />
     </SafeAreaView>
@@ -172,57 +175,57 @@ function LeaderboardRow({ student, rank }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container:   { flex: 1, backgroundColor: '#0f0e17' },
-  centered:    { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f0e17' },
-  loadingText: { marginTop: 12, color: '#a5b4fc', fontSize: 15 },
+  container:   { flex: 1, backgroundColor: '#0f0d15' },
+  centered:    { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f0d15' },
+  loadingText: { marginTop: 12, color: '#c3c0ff', fontSize: 15 },
 
   list:        { padding: 20, paddingBottom: 40 },
-  pageTitle:   { color: '#e0e7ff', fontSize: 26, fontWeight: '800', marginBottom: 4 },
-  dateLabel:   { color: '#818cf8', fontSize: 13, marginBottom: 20 },
-  sectionLabel:{ color: '#6366f1', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12, marginTop: 8 },
+  pageTitle:   { color: '#e6e0ec', fontSize: 26, fontWeight: '800', marginBottom: 4 },
+  dateLabel:   { color: '#8682ff', fontSize: 13, marginBottom: 20 },
+  sectionLabel:{ color: '#8682ff', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12, marginTop: 8 },
 
   // Filters
   filterScroll: { marginBottom: 20 },
   filterContent: { gap: 10, paddingRight: 20 },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#1e1b4b', borderWidth: 1, borderColor: '#312e81' },
-  filterChipActive: { backgroundColor: '#4f46e5', borderColor: '#6366f1' },
-  filterChipText: { color: '#818cf8', fontSize: 13, fontWeight: '600' },
-  filterChipTextActive: { color: '#ffffff' },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  filterChipActive: { backgroundColor: 'rgba(134,130,255,0.15)', borderColor: '#8682ff' },
+  filterChipText: { color: '#918fa0', fontSize: 13, fontWeight: '600' },
+  filterChipTextActive: { color: '#c3c0ff' },
 
   // Stats grid
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 28 },
   statCard:  {
     width: '47%',
-    backgroundColor: '#1e1b4b',
-    borderRadius: 14,
+    backgroundColor: 'rgba(44,38,77,0.4)',
+    borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
   },
   statIcon:  { fontSize: 26, marginBottom: 6 },
   statValue: { fontSize: 28, fontWeight: '800' },
-  statLabel: { color: '#818cf8', fontSize: 12, marginTop: 2, textAlign: 'center' },
+  statLabel: { color: '#c7c4d6', fontSize: 12, marginTop: 2, textAlign: 'center', fontWeight: '600' },
 
   // Leaderboard
   leaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e1b4b',
-    borderRadius: 12,
+    backgroundColor: 'rgba(44,38,77,0.4)',
+    borderRadius: 16,
     marginBottom: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#312e81',
+    borderColor: 'rgba(255,255,255,0.08)',
     gap: 10,
   },
   rank:      { fontSize: 16, width: 36, textAlign: 'center', fontWeight: '700' },
-  avatar:    { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  avatarText:{ color: '#a5b4fc', fontSize: 14, fontWeight: '700' },
+  avatar:    { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  avatarText:{ color: '#c3c0ff', fontSize: 14, fontWeight: '800' },
   leaderInfo:{ flex: 1 },
-  leaderName:{ color: '#e0e7ff', fontSize: 14, fontWeight: '600' },
-  leaderVillage: { color: '#818cf8', fontSize: 11, marginTop: 2 },
-  pointsBadge:   { backgroundColor: '#312e81', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
-  pointsValue:   { color: '#fbbf24', fontSize: 13, fontWeight: '700' },
+  leaderName:{ color: '#e6e0ec', fontSize: 15, fontWeight: '600' },
+  leaderVillage: { color: '#8682ff', fontSize: 11, marginTop: 2 },
+  pointsBadge:   { backgroundColor: 'rgba(44,38,77,0.8)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  pointsValue:   { color: '#fbbf24', fontSize: 13, fontWeight: '800' },
 
-  emptyText: { color: '#4c4f6b', textAlign: 'center', marginTop: 40 },
+  emptyText: { color: '#918fa0', textAlign: 'center', marginTop: 40, fontSize: 15 },
 });

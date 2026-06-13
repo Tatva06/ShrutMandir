@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, BookOpen, Settings, LogOut, ClipboardList } from 'lucide-react';
+import LegalFooter from '../components/LegalFooter';
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
@@ -73,9 +74,11 @@ export default function DashboardLayout() {
           )}
         </nav>
 
-        <button onClick={handleLogout} className="btn btn-danger" style={{ justifyContent: 'flex-start', marginTop: 'auto' }}>
+        <button onClick={handleLogout} className="btn btn-danger" style={{ justifyContent: 'flex-start', marginTop: 'auto', marginBottom: '1rem' }}>
           <LogOut size={18} /> Logout
         </button>
+
+        <LegalFooter />
       </aside>
 
       {/* Main Content Area */}
