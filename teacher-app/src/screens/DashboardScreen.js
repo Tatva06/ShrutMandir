@@ -129,6 +129,7 @@ export default function DashboardScreen() {
         )}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No students found.</Text>
+        }
         ListFooterComponent={
           <LegalFooter />
         }
