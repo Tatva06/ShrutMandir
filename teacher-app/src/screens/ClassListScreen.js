@@ -8,8 +8,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_BASE } from '../config';
 
+// IST = UTC+5:30 — use arithmetic so it works in ALL browsers/environments
 function todayString() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const now = new Date();
+  const istMs = now.getTime() + (5 * 60 + 30) * 60 * 1000; // add IST offset
+  return new Date(istMs).toISOString().split('T')[0]; // always 'YYYY-MM-DD'
 }
 
 const STATUS_CONFIG = {

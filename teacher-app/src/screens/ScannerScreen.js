@@ -13,8 +13,11 @@ const SCAN_COOLDOWN_MS = 1200;
 
 const MODES = ['Attendance', 'Gatha', 'General'];
 
+// IST = UTC+5:30 — use arithmetic so it works in ALL browsers/environments
 function todayString() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const now = new Date();
+  const istMs = now.getTime() + (5 * 60 + 30) * 60 * 1000;
+  return new Date(istMs).toISOString().split('T')[0]; // always 'YYYY-MM-DD'
 }
 
 export default function ScannerScreen({ navigation }) {

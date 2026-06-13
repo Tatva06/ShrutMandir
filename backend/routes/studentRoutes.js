@@ -4,8 +4,11 @@ const Student = require('../models/Student');
 const { requireAuth, requireSuperAdmin } = require('../middleware/auth');
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
+// IST = UTC+5:30 — arithmetic avoids relying on Intl timezone support in Node
 function todayIST() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const now = new Date();
+  const istMs = now.getTime() + (5 * 60 + 30) * 60 * 1000;
+  return new Date(istMs).toISOString().split('T')[0]; // 'YYYY-MM-DD'
 }
 
 // ─── GET /api/students ────────────────────────────────────────────────────────

@@ -11,6 +11,8 @@ export default function Students() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedClassFilter, setSelectedClassFilter] = useState('all');
+  const [sortField, setSortField] = useState('rollNo'); // 'rollNo' | 'name' | 'points'
+  const [sortDir,  setSortDir]  = useState('asc');      // 'asc' | 'desc'
   
   // Modals state
   const [isAddModalOpen, setAddModalOpen] = useState(false);
@@ -37,9 +39,26 @@ export default function Students() {
 
   const filteredStudents = students.filter(s => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || 
-      (s.classId?.className || s.village || '').toLowerCase().includes(search.toLowerCase());
+      (s.classId?.className || s.village || '').toLowerCase().includes(search.toLowerCase()) ||
+      String(s.rollNo || '').toLowerCase().includes(search.toLowerCase());
     const matchClass = selectedClassFilter === 'all' || s.classId?._id === selectedClassFilter;
     return matchSearch && matchClass;
+  }).sort((a, b) => {
+    let va, vb;
+    if (sortField === 'rollNo') {
+      // Sort roll numbers numerically if they're all digits, otherwise alphabetically
+      va = isNaN(a.rollNo) ? String(a.rollNo || '').toLowerCase() : Number(a.rollNo);
+      vb = isNaN(b.rollNo) ? String(b.rollNo || '').toLowerCase() : Number(b.rollNo);
+    } else if (sortField === 'name') {
+      va = (a.name || '').toLowerCase();
+      vb = (b.name || '').toLowerCase();
+    } else {
+      va = a.points || 0;
+      vb = b.points || 0;
+    }
+    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return sortDir === 'asc' ? 1 : -1;
+    return 0;
   });
 
   const PAGE_SIZE = 25;
@@ -94,12 +113,12 @@ export default function Students() {
           </div>
         </div>
 
-      <div className="glass-card" style={{ marginBottom: '2rem', padding: '1rem 1.5rem', display: 'flex', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+      <div className="glass-card" style={{ marginBottom: '2rem', padding: '1rem 1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
           <Search size={18} color="var(--text-sub)" />
           <input 
             type="text" 
-            placeholder="Search by name or class…" 
+            placeholder="Search by name, roll no or class…" 
             style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '1rem', outline: 'none' }}
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -116,12 +135,28 @@ export default function Students() {
             {classes.map(c => <option key={c._id} value={c._id}>{c.className}</option>)}
           </select>
         </div>
+        {/* Sort controls */}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-sub)', whiteSpace: 'nowrap' }}>Sort by:</span>
+          {[['rollNo','Roll No'],['name','Name'],['points','Points']].map(([field, label]) => (
+            <button
+              key={field}
+              type="button"
+              onClick={() => { if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortField(field); setSortDir('asc'); } }}
+              className={`btn ${sortField === field ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem' }}
+            >
+              {label} {sortField === field ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="data-table">
           <thead>
             <tr>
+              <th>Roll No</th>
               <th>Name</th>
               <th>Class / Village</th>
               <th>Total Points</th>
@@ -136,6 +171,7 @@ export default function Students() {
             ) : (
               paginatedStudents.map(student => (
                 <tr key={student._id}>
+                  <td style={{ color: 'var(--text-sub)', fontWeight: 600, fontSize: '0.85rem' }}>{student.rollNo}</td>
                   <td style={{ fontWeight: 600 }}>{student.name}</td>
                   <td>{student.classId?.className || student.village || 'Unassigned'}</td>
                   <td style={{ color: 'var(--accent-green)', fontWeight: 700 }}>{student.points} pts</td>
