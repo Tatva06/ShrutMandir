@@ -8,8 +8,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_BASE } from '../config';
 
-
-
 const ACTIVITY_COLORS = {
   Gatha:     { bg: '#f59e0b22', border: '#f59e0b', text: '#f59e0b', icon: '🙏' },
   Aaradhana: { bg: '#a78bfa22', border: '#a78bfa', text: '#a78bfa', icon: '✨' },
@@ -164,7 +162,7 @@ export default function StudentProfileScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#6366f1" />
+        <ActivityIndicator size="large" color="#8682ff" />
         <Text style={styles.loadingText}>Loading profile…</Text>
       </View>
     );
@@ -172,11 +170,11 @@ export default function StudentProfileScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0e17" />
+      <StatusBar barStyle="light-content" backgroundColor="#0f0d15" />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchStudent(true)} tintColor="#6366f1" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchStudent(true)} tintColor="#8682ff" />}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Profile Card ── */}
@@ -187,8 +185,8 @@ export default function StudentProfileScreen({ route, navigation }) {
           <Text style={styles.studentName}>{student.name}</Text>
 
           <View style={styles.badgeRow}>
-            <Badge label={`Roll ${student.rollNo}`} color="#818cf8" />
-            {student.village ? <Badge label={student.village} color="#6366f1" /> : null}
+            <Badge label={`Roll ${student.rollNo}`} color="#c3c0ff" />
+            {student.village ? <Badge label={student.village} color="#8682ff" /> : null}
           </View>
 
           {student.phoneNumber ? (
@@ -236,7 +234,7 @@ export default function StudentProfileScreen({ route, navigation }) {
                       <Text style={styles.logDate}>{formatDate(log.date)}</Text>
                       <Text style={[styles.logStatus, { color: cfg.text }]}>
                         {log.status}  {log.pointsAwarded > 0 ? `+${log.pointsAwarded} pts` : ''}
-                        {log.loggedBy && <Text style={{ color: '#818cf8', fontStyle: 'italic', fontSize: 11 }}>  by {log.loggedBy}</Text>}
+                        {log.loggedBy && <Text style={{ color: '#c3c0ff', fontStyle: 'italic', fontSize: 11 }}>  by {log.loggedBy}</Text>}
                       </Text>
                     </View>
                   </View>
@@ -257,7 +255,7 @@ export default function StudentProfileScreen({ route, navigation }) {
                     <View style={styles.logInfo}>
                       <Text style={styles.logDate}>{formatDate(log.date)}</Text>
                       <Text style={styles.logDesc}>{log.description}</Text>
-                      {log.loggedBy && <Text style={{ color: '#818cf8', fontStyle: 'italic', fontSize: 11, marginTop: 2 }}>by {log.loggedBy}</Text>}
+                      {log.loggedBy && <Text style={{ color: '#c3c0ff', fontStyle: 'italic', fontSize: 11, marginTop: 2 }}>by {log.loggedBy}</Text>}
                     </View>
                     <Text style={{ color: pts >= 0 ? '#22c55e' : '#ef4444', fontWeight: '700', fontSize: 13 }}>
                       {pts >= 0 ? `+${pts}` : pts} pts
@@ -327,14 +325,14 @@ export default function StudentProfileScreen({ route, navigation }) {
                 <TextInput
                   style={styles.input}
                   placeholder={logType === 'Gatha' ? 'Custom Gatha name (optional)…' : 'Description…'}
-                  placeholderTextColor="#4c4f6b"
+                  placeholderTextColor="#918fa0"
                   value={customDesc}
                   onChangeText={setCustomDesc}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder={logType === 'Conduct' ? 'Points to deduct…' : 'Points…'}
-                  placeholderTextColor="#4c4f6b"
+                  placeholderTextColor="#918fa0"
                   keyboardType="numeric"
                   value={customPts}
                   onChangeText={setCustomPts}
@@ -367,76 +365,75 @@ export default function StudentProfileScreen({ route, navigation }) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 function Badge({ label, color }) {
   return (
-    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: color, backgroundColor: color + '22' }}>
-      <Text style={{ color, fontSize: 12, fontWeight: '600' }}>{label}</Text>
+    <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: color, backgroundColor: color + '22' }}>
+      <Text style={{ color, fontSize: 13, fontWeight: '700' }}>{label}</Text>
     </View>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container:   { flex: 1, backgroundColor: '#0f0e17' },
-  centered:    { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f0e17' },
-  loadingText: { marginTop: 12, color: '#a5b4fc', fontSize: 15 },
+  container:   { flex: 1, backgroundColor: '#0f0d15' },
+  centered:    { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f0d15' },
+  loadingText: { marginTop: 12, color: '#918fa0', fontSize: 15 },
   scroll:      { padding: 20, paddingBottom: 20 },
 
   // Profile card
-  profileCard:  { backgroundColor: '#1e1b4b', borderRadius: 20, padding: 20, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#312e81' },
-  avatar:       { width: 80, height: 80, borderRadius: 40, backgroundColor: '#312e81', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  avatarText:   { color: '#a5b4fc', fontSize: 28, fontWeight: '800' },
-  studentName:  { color: '#e0e7ff', fontSize: 22, fontWeight: '800', marginBottom: 10 },
-  badgeRow:     { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  phone:        { color: '#818cf8', fontSize: 14, marginBottom: 14 },
-  pointsGlow:   { backgroundColor: '#312e81', borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12, alignItems: 'center', marginBottom: 14 },
-  pointsValue:  { color: '#fbbf24', fontSize: 28, fontWeight: '800' },
-  pointsLabel:  { color: '#818cf8', fontSize: 12, marginTop: 2 },
-  attendLabel:  { color: '#818cf8', fontSize: 13, marginBottom: 8 },
-  progressBg:   { width: '100%', height: 8, backgroundColor: '#312e81', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: 8, backgroundColor: '#22c55e', borderRadius: 4 },
+  profileCard:  { backgroundColor: 'rgba(44,38,77,0.4)', borderRadius: 24, padding: 24, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  avatar:       { width: 96, height: 96, borderRadius: 48, backgroundColor: 'rgba(44,38,77,0.8)', justifyContent: 'center', alignItems: 'center', marginBottom: 16, borderWidth: 2, borderColor: 'rgba(134,130,255,0.3)', shadowColor: '#8682ff', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 5 },
+  avatarText:   { color: '#c3c0ff', fontSize: 32, fontWeight: '800' },
+  studentName:  { color: '#e6e0ec', fontSize: 28, fontWeight: '800', marginBottom: 12, letterSpacing: -0.5 },
+  badgeRow:     { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  phone:        { color: '#8682ff', fontSize: 15, marginBottom: 16, fontWeight: '600' },
+  pointsGlow:   { backgroundColor: 'rgba(44,38,77,0.8)', borderRadius: 16, paddingHorizontal: 32, paddingVertical: 16, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20 },
+  pointsValue:  { color: '#fbbf24', fontSize: 36, fontWeight: '800' },
+  pointsLabel:  { color: '#c7c4d6', fontSize: 12, marginTop: 4, letterSpacing: 1, textTransform: 'uppercase', fontWeight: '700' },
+  attendLabel:  { color: '#918fa0', fontSize: 13, marginBottom: 8, fontWeight: '600' },
+  progressBg:   { width: '100%', height: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: 8, backgroundColor: '#8682ff', borderRadius: 4 },
 
   // Tabs
-  tabs:        { flexDirection: 'row', marginBottom: 14, gap: 10 },
-  tab:         { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#312e81', alignItems: 'center' },
-  tabActive:   { backgroundColor: '#312e81', borderColor: '#6366f1' },
-  tabText:     { color: '#4c4f6b', fontWeight: '600', fontSize: 14 },
-  tabTextActive: { color: '#e0e7ff' },
+  tabs:        { flexDirection: 'row', marginBottom: 16, gap: 10, backgroundColor: 'rgba(255,255,255,0.03)', padding: 4, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  tab:         { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  tabActive:   { backgroundColor: '#8682ff' },
+  tabText:     { color: '#918fa0', fontSize: 14, fontWeight: '700' },
+  tabTextActive: { color: '#ffffff' },
 
-  // Log rows
-  logRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1 },
-  logIcon:   { fontSize: 22, marginRight: 12 },
-  logInfo:   { flex: 1 },
-  logDate:   { color: '#818cf8', fontSize: 11, marginBottom: 2 },
-  logStatus: { fontSize: 13, fontWeight: '600' },
-  logDesc:   { color: '#e0e7ff', fontSize: 13, fontWeight: '600' },
-  emptyText: { color: '#4c4f6b', textAlign: 'center', marginTop: 30 },
+  // Logs
+  emptyText:   { color: '#918fa0', textAlign: 'center', marginTop: 40, fontSize: 15 },
+  logRow:      { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1 },
+  logIcon:     { fontSize: 24, marginRight: 16 },
+  logInfo:     { flex: 1 },
+  logDate:     { color: '#918fa0', fontSize: 12, marginBottom: 4, fontWeight: '600' },
+  logStatus:   { fontSize: 16, fontWeight: '700' },
+  logDesc:     { color: '#e6e0ec', fontSize: 15, fontWeight: '600' },
 
   // FAB
-  fab: { position: 'absolute', bottom: 24, left: 24, right: 24, backgroundColor: '#6366f1', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
-  fabText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  fab: { position: 'absolute', bottom: 30, alignSelf: 'center', backgroundColor: '#8682ff', paddingHorizontal: 32, paddingVertical: 18, borderRadius: 16, shadowColor: '#8682ff', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 25, elevation: 10 },
+  fabText: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
 
   // Modal
-  modalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
-  modalCard:     { backgroundColor: '#1e1b4b', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%' },
-  modalTitle:    { color: '#e0e7ff', fontSize: 18, fontWeight: '700', textAlign: 'center' },
-  modalSub:      { color: '#818cf8', fontSize: 13, textAlign: 'center', marginTop: 2, marginBottom: 16 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalCard:    { backgroundColor: '#1d1a23', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40, maxHeight: '85%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  modalTitle:   { color: '#e6e0ec', fontSize: 24, fontWeight: '800', marginBottom: 4 },
+  modalSub:     { color: '#918fa0', fontSize: 14, marginBottom: 20 },
+  typeRow:      { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  typeBtn:      { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)' },
+  typeBtnActive: { backgroundColor: 'rgba(134,130,255,0.15)', borderColor: '#8682ff' },
+  typeBtnText:  { color: '#918fa0', fontSize: 13, fontWeight: '700' },
+  typeBtnTextActive: { color: '#c3c0ff' },
 
-  typeRow:       { flexDirection: 'row', gap: 8, marginBottom: 14 },
-  typeBtn:       { flex: 1, paddingVertical: 9, borderRadius: 8, borderWidth: 1, borderColor: '#312e81', alignItems: 'center' },
-  typeBtnActive: { backgroundColor: '#6366f1', borderColor: '#6366f1' },
-  typeBtnText:   { color: '#818cf8', fontSize: 12, fontWeight: '600' },
-  typeBtnTextActive: { color: '#fff' },
+  gathaRow:     { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  gathaRowSel:  { backgroundColor: 'rgba(134,130,255,0.05)' },
+  check:        { color: '#8682ff', fontSize: 20, marginRight: 12 },
+  gathaName:    { flex: 1, color: '#e6e0ec', fontSize: 15, fontWeight: '500' },
+  gathaPts:     { color: '#4ADE80', fontWeight: '700', fontSize: 14 },
 
-  gathaRow:    { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#312e81' },
-  gathaRowSel: { backgroundColor: '#312e8155', borderRadius: 8 },
-  check:       { fontSize: 20, color: '#818cf8', marginRight: 12, width: 24 },
-  gathaName:   { flex: 1, color: '#e0e7ff', fontSize: 14 },
-  gathaPts:    { color: '#22c55e', fontWeight: '700', fontSize: 13 },
+  input:        { backgroundColor: 'rgba(0,0,0,0.3)', color: '#e6e0ec', borderRadius: 12, padding: 16, fontSize: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
 
-  input: { backgroundColor: '#0f0e17', borderRadius: 8, borderWidth: 1, borderColor: '#312e81', color: '#e0e7ff', padding: 10, fontSize: 14 },
-
-  modalFooter:    { flexDirection: 'row', gap: 10, marginTop: 14 },
-  cancelBtn:      { flex: 1, backgroundColor: '#312e81', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
-  cancelBtnText:  { color: '#818cf8', fontWeight: '600', fontSize: 14 },
-  submitBtn:      { flex: 2, backgroundColor: '#6366f1', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
-  submitBtnText:  { color: '#fff', fontWeight: '700', fontSize: 14 },
+  modalFooter:  { flexDirection: 'row', gap: 12, marginTop: 24 },
+  cancelBtn:    { flex: 1, paddingVertical: 16, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center' },
+  cancelBtnText:{ color: '#918fa0', fontWeight: '700', fontSize: 15 },
+  submitBtn:    { flex: 2, paddingVertical: 16, borderRadius: 14, backgroundColor: '#8682ff', alignItems: 'center', shadowColor: '#8682ff', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10 },
+  submitBtnText:{ color: '#ffffff', fontWeight: '700', fontSize: 15 },
 });
