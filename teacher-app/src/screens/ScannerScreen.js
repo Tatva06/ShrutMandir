@@ -63,17 +63,23 @@ async function flushQueue(token) {
   return queue.length - remaining.length;
 }
 
-// ── Isolated Camera component — NEVER re-renders after mount ─────────────────
-// Only torchOn is a prop; the handler is a stable ref so memo equality holds.
-const StableCamera = memo(({ torchOn, onBarcode }) => (
+// ── Isolated Camera component ────────────────────────────────────────────────
+// Re-renders ONLY when torchOn or scanned changes — never from toast/log/etc.
+// noOp (not undefined) stops native QR processing without unmounting the camera.
+const noOp = () => {};
+const StableCamera = memo(({ torchOn, scanned, onBarcode }) => (
   <CameraView
     style={StyleSheet.absoluteFillObject}
     facing="back"
     enableTorch={torchOn}
     barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-    onBarcodeScanned={onBarcode}
+    onBarcodeScanned={scanned ? noOp : onBarcode}
   />
-), (prev, next) => prev.torchOn === next.torchOn && prev.onBarcode === next.onBarcode);
+), (prev, next) =>
+  prev.torchOn === next.torchOn &&
+  prev.scanned === next.scanned &&
+  prev.onBarcode === next.onBarcode
+);
 
 // ── Animated scan-line (own component so its re-renders stay isolated) ────────
 const ScanLine = memo(() => {
@@ -97,12 +103,14 @@ const ScanLine = memo(() => {
 export default function ScannerScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
 
-  // UI-only state (drives the overlay, NOT the camera)
-  const [mode, setMode]           = useState('Attendance');
-  const [torchOn, setTorchOn]     = useState(false);
-  const [processing, setProcessing] = useState(false);
+  // UI state
+  const [mode, setMode]               = useState('Attendance');
+  const [torchOn, setTorchOn]         = useState(false);
+  // scanned is the ONLY camera-affecting state — controls native scan on/off
+  const [scanned, setScanned]         = useState(false);
+  const [processing, setProcessing]   = useState(false);
   const [cacheLoaded, setCacheLoaded] = useState(false);
-  const [cacheSize, setCacheSize] = useState(0);
+  const [cacheSize, setCacheSize]     = useState(0);
   const [offlineCount, setOfflineCount] = useState(0);
   const [sessionLog, setSessionLog]     = useState([]);
   const [historyOpen, setHistoryOpen]   = useState(false);
@@ -114,20 +122,22 @@ export default function ScannerScreen({ navigation }) {
   const [customGatha, setCustomGatha]         = useState('');
   const [customPts, setCustomPts]             = useState('');
 
-  // ── Refs — never cause camera re-renders ─────────────────────────────────
-  const scanLock        = useRef(false);  // replaces scanned+processing state for the handler
-  const cooldownRef     = useRef(null);
-  const lastScanTimer   = useRef(null);
-  const cacheRef        = useRef({});     // { rollNo: studentObj } — no state update needed
-  const teacherNameRef  = useRef('Unknown Teacher');
-  const lateCutoffRef   = useRef({ hour: 9, minute: 15 });
-  const gathaListRef    = useRef([
+  // ── Refs ─────────────────────────────────────────────────────────────────
+  const cooldownRef      = useRef(null);
+  const lastScanTimer    = useRef(null);
+  // Dedup guard: expo-camera can fire onBarcodeScanned multiple times for the
+  // same physical scan before the JS scanned state update propagates to native.
+  const lastScannedData  = useRef(null);
+  const cacheRef         = useRef({});
+  const teacherNameRef   = useRef('Unknown Teacher');
+  const lateCutoffRef    = useRef({ hour: 9, minute: 15 });
+  const gathaListRef     = useRef([
     { name: 'Navkar Mantra', pts: 10 }, { name: 'Logassa Sutra', pts: 20 },
     { name: 'Uvasaggaharam Stotra', pts: 20 }, { name: 'Bhaktamar Stotra', pts: 50 },
     { name: 'Namutthunam Sutra', pts: 15 }, { name: 'Aarti', pts: 10 },
   ]);
-  const modalStudentRef = useRef(null);   // for Gatha modal
-  const [modalStudentUI, setModalStudentUI] = useState(null); // just for display
+  const modalStudentRef  = useRef(null);
+  const [modalStudentUI, setModalStudentUI] = useState(null);
 
   // Animations
   const toastAnim   = useRef(new Animated.Value(-80)).current;
@@ -210,16 +220,20 @@ export default function ScannerScreen({ navigation }) {
     };
   }, [showToast]);
 
-  // ── Main scan handler — stored in a ref so StableCamera never gets a new prop ──
+  // ── Main scan handler ────────────────────────────────────────────────────
   const handleBarcodeRef = useRef(null);
   handleBarcodeRef.current = async ({ data }) => {
-    if (scanLock.current) return;
-    scanLock.current = true;
+    const key = String(data).trim();
+
+    // Dedup: camera fires multiple events before scanned state reaches native
+    if (lastScannedData.current === key) return;
+    lastScannedData.current = key;
+
+    setScanned(true);      // stops native QR processing immediately via noOp
     setProcessing(true);
 
     try {
-      // Cache lookup — instant, no network
-      const key = String(data).trim();
+      // Cache lookup — instant, no network (key already extracted above)
       let student = cacheRef.current[key] || null;
 
       // Cache miss → server fallback
@@ -311,7 +325,11 @@ export default function ScannerScreen({ navigation }) {
       showToast('❌ Error — try again', '#ef4444');
     } finally {
       setProcessing(false);
-      cooldownRef.current = setTimeout(() => { scanLock.current = false; }, SCAN_COOLDOWN_MS);
+      // Re-enable scanning after cooldown; also clear the dedup guard
+      cooldownRef.current = setTimeout(() => {
+        lastScannedData.current = null;
+        setScanned(false);
+      }, SCAN_COOLDOWN_MS);
     }
   };
 
@@ -369,8 +387,8 @@ export default function ScannerScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* ── Camera — isolated, never re-renders from UI state ── */}
-      <StableCamera torchOn={torchOn} onBarcode={stableHandleBarcodeRef.current} />
+      {/* ── Camera — re-renders only on torchOn/scanned changes ── */}
+      <StableCamera torchOn={torchOn} scanned={scanned} onBarcode={stableHandleBarcodeRef.current} />
 
       {/* ── Overlay UI — re-renders freely without touching camera ── */}
       <View style={styles.overlay} pointerEvents="box-none">
@@ -395,7 +413,7 @@ export default function ScannerScreen({ navigation }) {
           <View style={styles.segmentControl}>
             {MODES.map(m => (
               <TouchableOpacity key={m} style={[styles.segment, mode === m && styles.segmentActive]}
-                onPress={() => { setMode(m); scanLock.current = false; }}>
+                onPress={() => { setMode(m); setScanned(false); lastScannedData.current = null; }}>
                 <Text style={[styles.segmentText, mode === m && styles.segmentTextActive]}>{m}</Text>
               </TouchableOpacity>
             ))}
@@ -452,7 +470,7 @@ export default function ScannerScreen({ navigation }) {
             ? <View style={styles.processingRow}><ActivityIndicator color="#fff" size="small" /><Text style={styles.processingText}>  Processing…</Text></View>
             : <Text style={styles.idleText}>{cacheLoaded ? 'Ready — point at QR code' : 'Loading…'}</Text>
           }
-          <TouchableOpacity style={styles.resetBtn} onPress={() => { scanLock.current = false; }}>
+          <TouchableOpacity style={styles.resetBtn} onPress={() => { setScanned(false); lastScannedData.current = null; }}>
             <Text style={styles.resetBtnText}>🔄  Reset Scanner</Text>
           </TouchableOpacity>
           <LegalFooter />
