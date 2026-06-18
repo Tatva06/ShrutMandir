@@ -83,7 +83,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ marginBottom: '0.25rem' }}>Daily Master Review</h1>
           {lastUpdated && (
@@ -97,7 +97,7 @@ export default function Dashboard() {
           className="btn btn-secondary"
           onClick={() => fetchDashboardData(true)}
           disabled={refreshing}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}
         >
           <RefreshCw size={15} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
           Refresh
@@ -141,7 +141,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+      <div className="dashboard-main-grid">
         
         {/* Today's Master Attendance Table */}
         <div className="glass-card">

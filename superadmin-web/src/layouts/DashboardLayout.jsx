@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, Settings, LogOut, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, Settings, LogOut, ClipboardList, Menu, X } from 'lucide-react';
 import LegalFooter from '../components/LegalFooter';
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -35,12 +36,28 @@ export default function DashboardLayout() {
     navigate('/login');
   };
 
+  // Close sidebar on mobile when a link is clicked
+  const closeSidebar = () => setSidebarOpen(false);
+
   if (!user) return null;
 
   return (
     <div className="app-container">
+      {/* Mobile Top Bar */}
+      <div className="mobile-topbar">
+        <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--accent-indigo)' }}>ShrutMandir</h2>
+        <button className="menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      {/* Sidebar Overlay for mobile */}
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={closeSidebar}></div>
+      )}
+
       {/* Sidebar */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div style={{ marginBottom: '3rem' }}>
           <h2 style={{ fontSize: '1.4rem', color: 'var(--accent-indigo)', display: 'flex', alignItems: 'center', gap: 8 }}>
             ShrutMandir
@@ -51,24 +68,24 @@ export default function DashboardLayout() {
         </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-          <NavLink to="/" end className={({ isActive }) => `btn ${isActive ? 'btn-primary' : 'btn-secondary'}`} style={{ justifyContent: 'flex-start' }}>
+          <NavLink to="/" end onClick={closeSidebar} className={({ isActive }) => `btn ${isActive ? 'btn-primary' : 'btn-secondary'}`} style={{ justifyContent: 'flex-start' }}>
             <LayoutDashboard size={18} /> Dashboard
           </NavLink>
           
-          <NavLink to="/students" className={({ isActive }) => `btn ${isActive ? 'btn-primary' : 'btn-secondary'}`} style={{ justifyContent: 'flex-start' }}>
+          <NavLink to="/students" onClick={closeSidebar} className={({ isActive }) => `btn ${isActive ? 'btn-primary' : 'btn-secondary'}`} style={{ justifyContent: 'flex-start' }}>
             <Users size={18} /> Students
           </NavLink>
 
-          <NavLink to="/teachers" className={({ isActive }) => `btn ${isActive ? 'btn-primary' : 'btn-secondary'}`} style={{ justifyContent: 'flex-start' }}>
+          <NavLink to="/teachers" onClick={closeSidebar} className={({ isActive }) => `btn ${isActive ? 'btn-primary' : 'btn-secondary'}`} style={{ justifyContent: 'flex-start' }}>
             <BookOpen size={18} /> Teachers
           </NavLink>
 
-          <NavLink to="/attendance" className={({ isActive }) => `btn ${isActive ? 'btn-primary' : 'btn-secondary'}`} style={{ justifyContent: 'flex-start' }}>
+          <NavLink to="/attendance" onClick={closeSidebar} className={({ isActive }) => `btn ${isActive ? 'btn-primary' : 'btn-secondary'}`} style={{ justifyContent: 'flex-start' }}>
             <ClipboardList size={18} /> Attendance
           </NavLink>
 
           {user.role === 'SuperAdmin' && (
-            <NavLink to="/settings" className={({ isActive }) => `btn ${isActive ? 'btn-primary' : 'btn-secondary'}`} style={{ justifyContent: 'flex-start' }}>
+            <NavLink to="/settings" onClick={closeSidebar} className={({ isActive }) => `btn ${isActive ? 'btn-primary' : 'btn-secondary'}`} style={{ justifyContent: 'flex-start' }}>
               <Settings size={18} /> Settings
             </NavLink>
           )}

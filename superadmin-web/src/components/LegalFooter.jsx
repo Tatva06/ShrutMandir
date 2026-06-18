@@ -7,16 +7,17 @@ export default function LegalFooter() {
     <div style={{
       marginTop: 'auto',
       paddingTop: '1.5rem',
-      borderTop: '1px solid var(--border-color)',
+      borderTop: '1px solid var(--border-light)',
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'flex-start',
-      gap: '0.25rem',
+      alignItems: 'center',
+      textAlign: 'center',
+      gap: '0.4rem',
       fontSize: '0.75rem',
       color: 'var(--text-muted)'
     }}>
       <p style={{ margin: 0, fontWeight: 600 }}>© 2026 Shrut Mandir. All Rights Reserved.</p>
-      <p style={{ margin: 0, color: 'var(--accent-indigo)', fontWeight: 700 }}>Designed & Developed by Tatvam Studios</p>
+      <p style={{ margin: 0, color: 'var(--accent-indigo)', fontWeight: 700, lineHeight: 1.4, wordBreak: 'break-word' }}>Designed & Developed by Tatvam Studios</p>
       <button 
         onClick={() => setModalOpen(true)}
         style={{ 

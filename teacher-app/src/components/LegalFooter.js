@@ -61,6 +61,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 4,
+    textAlign: 'center',
   },
   creditText: {
     color: '#8682ff',
@@ -68,6 +69,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 8,
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
   linkContainer: {
     paddingHorizontal: 10,

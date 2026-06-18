@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 
 import { API_BASE } from '../config';
+import LegalFooter from '../components/LegalFooter';
 
 const AGE_ORDER = ['5-10', '11-15', '16+', '3-8', '6-15'];
 
@@ -63,6 +64,9 @@ export default function ClassesHomeScreen({ navigation }) {
         } />}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No classes found.</Text>
+        }
+        ListFooterComponent={
+          <LegalFooter />
         }
       />
     </SafeAreaView>

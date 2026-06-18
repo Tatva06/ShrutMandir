@@ -7,6 +7,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_BASE } from '../config';
+import LegalFooter from '../components/LegalFooter';
 
 const ACTIVITY_COLORS = {
   Gatha:     { bg: '#f59e0b22', border: '#f59e0b', text: '#f59e0b', icon: '🙏' },
@@ -265,6 +266,7 @@ export default function StudentProfileScreen({ route, navigation }) {
               })
         )}
 
+        <LegalFooter />
         <View style={{ height: 100 }} />
       </ScrollView>
 

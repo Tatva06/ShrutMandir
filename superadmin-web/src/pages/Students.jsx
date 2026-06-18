@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { Search, Download, Plus, Trash2, X, Printer, ChevronLeft, ChevronRight, UserX } from 'lucide-react';
+import { Search, Download, Plus, Trash2, X, Printer, ChevronLeft, ChevronRight, UserX, ChevronDown, ChevronUp } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from '../utils/toast';
 
@@ -13,6 +13,7 @@ export default function Students() {
   const [selectedClassFilter, setSelectedClassFilter] = useState('all');
   const [sortField, setSortField] = useState('rollNo'); // 'rollNo' | 'name' | 'points'
   const [sortDir,  setSortDir]  = useState('asc');      // 'asc' | 'desc'
+  const [filtersOpen, setFiltersOpen] = useState(false);
   
   // Modals state
   const [isAddModalOpen, setAddModalOpen] = useState(false);
@@ -46,7 +47,6 @@ export default function Students() {
   }).sort((a, b) => {
     let va, vb;
     if (sortField === 'rollNo') {
-      // Sort roll numbers numerically if they're all digits, otherwise alphabetically
       va = isNaN(a.rollNo) ? String(a.rollNo || '').toLowerCase() : Number(a.rollNo);
       vb = isNaN(b.rollNo) ? String(b.rollNo || '').toLowerCase() : Number(b.rollNo);
     } else if (sortField === 'name') {
@@ -85,23 +85,24 @@ export default function Students() {
   return (
     <div>
       <div className="no-print">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        {/* ── Page Header ── */}
+        <div className="students-page-header">
           <h1>Student Management</h1>
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div className="students-action-btns">
             <button 
               type="button"
               onClick={() => window.print()} 
               className="btn btn-secondary" 
               title="Print QR Code ID Cards"
             >
-              <Printer size={16} /> Export ID Cards
+              <Printer size={16} /> <span className="btn-label">ID Cards</span>
             </button>
             <button 
               type="button"
               onClick={exportCSV} 
               className="btn btn-secondary"
             >
-              <Download size={16} /> Export CSV
+              <Download size={16} /> <span className="btn-label">CSV</span>
             </button>
             <button 
               type="button"
@@ -113,86 +114,142 @@ export default function Students() {
           </div>
         </div>
 
-      <div className="glass-card" style={{ marginBottom: '2rem', padding: '1rem 1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
-          <Search size={18} color="var(--text-sub)" />
-          <input 
-            type="text" 
-            placeholder="Search by name, roll no or class…" 
-            style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '1rem', outline: 'none' }}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-        <div style={{ borderLeft: '1px solid var(--border-light)', paddingLeft: '1rem' }}>
-          <select 
-            className="input-field" 
-            style={{ width: '200px', appearance: 'none' }}
-            value={selectedClassFilter}
-            onChange={e => setSelectedClassFilter(e.target.value)}
-          >
-            <option value="all">All Classes</option>
-            {classes.map(c => <option key={c._id} value={c._id}>{c.className}</option>)}
-          </select>
-        </div>
-        {/* Sort controls */}
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-sub)', whiteSpace: 'nowrap' }}>Sort by:</span>
-          {[['rollNo','Roll No'],['name','Name'],['points','Points']].map(([field, label]) => (
-            <button
-              key={field}
-              type="button"
-              onClick={() => { if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortField(field); setSortDir('asc'); } }}
-              className={`btn ${sortField === field ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem' }}
+        {/* ── Filters (collapsible on mobile) ── */}
+        <div className="glass-card students-filter-card">
+          {/* Search always visible */}
+          <div className="students-search-row">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+              <Search size={18} color="var(--text-sub)" />
+              <input 
+                type="text" 
+                placeholder="Search by name, roll no or class…" 
+                style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '1rem', outline: 'none' }}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <button 
+              className="btn btn-secondary filter-toggle-btn"
+              onClick={() => setFiltersOpen(f => !f)}
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
             >
-              {label} {sortField === field ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+              Filters {filtersOpen ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
             </button>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Roll No</th>
-              <th>Name</th>
-              <th>Class / Village</th>
-              <th>Total Points</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Loading…</td></tr>
-            ) : paginatedStudents.length === 0 ? (
-              <tr><td colSpan="4" style={{ textAlign: 'center' }}>No students found</td></tr>
-            ) : (
-              paginatedStudents.map(student => (
-                <tr key={student._id}>
-                  <td style={{ color: 'var(--text-sub)', fontWeight: 600, fontSize: '0.85rem' }}>{student.rollNo}</td>
-                  <td style={{ fontWeight: 600 }}>{student.name}</td>
-                  <td>{student.classId?.className || student.village || 'Unassigned'}</td>
-                  <td style={{ color: 'var(--accent-green)', fontWeight: 700 }}>{student.points} pts</td>
-                  <td>
-                    <button 
-                      type="button"
-                      onClick={() => setSelectedStudentId(student._id)}
-                      className="btn btn-secondary" 
-                      style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
-                    >
-                      View Logs
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        
+          {/* Collapsible extra filters */}
+          <div className={`students-filter-extra ${filtersOpen ? 'open' : ''}`}>
+            <div className="students-filter-divider">
+              <select 
+                className="input-field" 
+                style={{ appearance: 'none' }}
+                value={selectedClassFilter}
+                onChange={e => setSelectedClassFilter(e.target.value)}
+              >
+                <option value="all">All Classes</option>
+                {classes.map(c => <option key={c._id} value={c._id}>{c.className}</option>)}
+              </select>
+            </div>
+            <div className="students-sort-row">
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-sub)', whiteSpace: 'nowrap' }}>Sort by:</span>
+              {[['rollNo','Roll No'],['name','Name'],['points','Points']].map(([field, label]) => (
+                <button
+                  key={field}
+                  type="button"
+                  onClick={() => { if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortField(field); setSortDir('asc'); } }}
+                  className={`btn ${sortField === field ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem' }}
+                >
+                  {label} {sortField === field ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Student Count ── */}
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+          Showing {paginatedStudents.length} of {filteredStudents.length} students
+        </p>
+
+        {/* ── Desktop Table ── */}
+        <div className="students-table-wrap glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Roll No</th>
+                <th>Name</th>
+                <th>Class / Village</th>
+                <th>Total Points</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>Loading…</td></tr>
+              ) : paginatedStudents.length === 0 ? (
+                <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No students found</td></tr>
+              ) : (
+                paginatedStudents.map(student => (
+                  <tr key={student._id}>
+                    <td style={{ color: 'var(--text-sub)', fontWeight: 600, fontSize: '0.85rem' }}>{student.rollNo}</td>
+                    <td style={{ fontWeight: 600 }}>{student.name}</td>
+                    <td>{student.classId?.className || student.village || 'Unassigned'}</td>
+                    <td style={{ color: 'var(--accent-green)', fontWeight: 700 }}>{student.points} pts</td>
+                    <td>
+                      <button 
+                        type="button"
+                        onClick={() => setSelectedStudentId(student._id)}
+                        className="btn btn-secondary" 
+                        style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
+                      >
+                        View Logs
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── Mobile Cards ── */}
+        <div className="students-mobile-cards">
+          {loading ? (
+            <div className="glass-card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading…</div>
+          ) : paginatedStudents.length === 0 ? (
+            <div className="glass-card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No students found</div>
+          ) : (
+            paginatedStudents.map(student => (
+              <div key={student._id} className="glass-card student-mobile-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)', marginBottom: '0.2rem' }}>{student.name}</p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Roll: <strong style={{ color: 'var(--text-sub)' }}>{student.rollNo}</strong>
+                      &nbsp;·&nbsp;{student.classId?.className || student.village || 'Unassigned'}
+                    </p>
+                  </div>
+                  <span style={{ color: 'var(--accent-green)', fontWeight: 800, fontSize: '1.1rem', whiteSpace: 'nowrap' }}>
+                    {student.points} pts
+                  </span>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setSelectedStudentId(student._id)}
+                  className="btn btn-secondary" 
+                  style={{ marginTop: '0.75rem', width: '100%', fontSize: '0.85rem', padding: '0.6rem' }}
+                >
+                  View Logs
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* ── Pagination ── */}
         {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', padding: '1rem', borderTop: '1px solid var(--border-light)' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', padding: '1rem' }}>
             <button 
               className="btn btn-secondary" 
               style={{ padding: '0.5rem' }} 
@@ -214,24 +271,23 @@ export default function Students() {
             </button>
           </div>
         )}
-      </div>
 
-      {isAddModalOpen && (
-        <AddStudentModal 
-          classes={classes} 
-          onClose={() => setAddModalOpen(false)} 
-          onSuccess={() => { setAddModalOpen(false); fetchData(); }} 
-        />
-      )}
+        {isAddModalOpen && (
+          <AddStudentModal 
+            classes={classes} 
+            onClose={() => setAddModalOpen(false)} 
+            onSuccess={() => { setAddModalOpen(false); fetchData(); }} 
+          />
+        )}
 
-      {selectedStudentId && (
-        <StudentProfileModal 
-          studentId={selectedStudentId} 
-          classes={classes}
-          onClose={() => setSelectedStudentId(null)}
-          onUpdate={() => { setSelectedStudentId(null); fetchData(); }}
-        />
-      )}
+        {selectedStudentId && (
+          <StudentProfileModal 
+            studentId={selectedStudentId} 
+            classes={classes}
+            onClose={() => setSelectedStudentId(null)}
+            onUpdate={() => { setSelectedStudentId(null); fetchData(); }}
+          />
+        )}
       </div>
 
       {/* ── Hidden Print Area for ID Cards ── */}
@@ -290,52 +346,52 @@ function AddStudentModal({ classes, onClose, onSuccess }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
-      <div className="glass-card" style={{ width: 600, padding: '2rem', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+      <div className="glass-card modal-sheet" style={{ position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
         <button type="button" onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24}/></button>
         <h2 style={{ marginBottom: '1.5rem' }}>Add New Student</h2>
         
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-2">
             <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Full Name *</label>
+              <label style={labelStyle}>Full Name *</label>
               <input type="text" className="input-field" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. Aarav Mehta" />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>QR / Roll No *</label>
+              <label style={labelStyle}>QR / Roll No *</label>
               <input type="text" className="input-field" required value={formData.rollNo} onChange={e => setFormData({...formData, rollNo: e.target.value})} placeholder="e.g. 101" />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-2">
             <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Father's Name</label>
+              <label style={labelStyle}>Father's Name</label>
               <input type="text" className="input-field" value={formData.fatherName} onChange={e => setFormData({...formData, fatherName: e.target.value})} placeholder="e.g. Rajesh Bhai" />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Mother's Name</label>
+              <label style={labelStyle}>Mother's Name</label>
               <input type="text" className="input-field" value={formData.motherName} onChange={e => setFormData({...formData, motherName: e.target.value})} placeholder="e.g. Rekha Ben" />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-2">
             <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Primary Phone</label>
+              <label style={labelStyle}>Primary Phone</label>
               <input type="text" className="input-field" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} placeholder="e.g. +91 9825..." />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Alternative Phone</label>
+              <label style={labelStyle}>Alternative Phone</label>
               <input type="text" className="input-field" value={formData.altPhone} onChange={e => setFormData({...formData, altPhone: e.target.value})} placeholder="e.g. Landline or mother's no" />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '1rem' }}>
+          <div className="form-grid-3">
             <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Age</label>
+              <label style={labelStyle}>Age</label>
               <input type="number" className="input-field" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} placeholder="e.g. 12" />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Gender</label>
+              <label style={labelStyle}>Gender</label>
               <select className="input-field" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} style={{ appearance: 'none' }}>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
@@ -343,18 +399,18 @@ function AddStudentModal({ classes, onClose, onSuccess }) {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Date of Birth</label>
+              <label style={labelStyle}>Date of Birth</label>
               <input type="date" className="input-field" value={formData.dob} onChange={e => setFormData({...formData, dob: e.target.value})} />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-2">
             <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Village / Area</label>
+              <label style={labelStyle}>Village / Area</label>
               <input type="text" className="input-field" value={formData.village} onChange={e => setFormData({...formData, village: e.target.value})} placeholder="e.g. Palitana" />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Assign Class</label>
+              <label style={labelStyle}>Assign Class</label>
               <select className="input-field" value={formData.classId} onChange={e => setFormData({...formData, classId: e.target.value})} style={{ appearance: 'none' }}>
                 <option value="">Select a Class...</option>
                 {classes.map(c => <option key={c._id} value={c._id}>{c.className} ({c.ageGroup})</option>)}
@@ -376,7 +432,6 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
   const [activeTab, setActiveTab] = useState('logs'); // 'logs' or 'edit'
   const [deleting, setDeleting] = useState(false);
   
-  // Edit Form state
   const [editForm, setEditForm] = useState({
     name: '',
     rollNo: '',
@@ -442,7 +497,7 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
     try {
       await api.delete(`/students/${studentId}`);
       toast.success(`${profile.name} deleted successfully.`);
-      onUpdate(); // closes modal and refreshes list
+      onUpdate();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error deleting student');
       setDeleting(false);
@@ -476,172 +531,176 @@ function StudentProfileModal({ studentId, classes, onClose, onUpdate }) {
   if (!profile) return null;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
-      <div className="glass-card" style={{ width: 800, maxHeight: '90vh', padding: '2rem', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-        <button type="button" onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={24}/></button>
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '0.5rem' }}>
+      <div className="glass-card profile-modal-sheet">
+        <button type="button" onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', zIndex: 2 }}><X size={24}/></button>
         
-        <div style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)' }}>{profile.name}</h2>
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-              <span className="badge badge-indigo">{profile.classId?.className || profile.village || 'Unassigned'}</span>
-              <span className="badge badge-green">Total Score: {profile.points} pts</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', marginRight: '2.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button 
-              type="button"
-              onClick={() => setActiveTab('logs')}
-              className={`btn ${activeTab === 'logs' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
-            >
-              Activity Logs
-            </button>
-            <button 
-              type="button"
-              onClick={() => setActiveTab('edit')}
-              className={`btn ${activeTab === 'edit' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
-            >
-              Edit Details & Class Transfer
-            </button>
-            <button
-              type="button"
-              onClick={deleteStudent}
-              disabled={deleting}
-              className="btn btn-danger"
-              style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
-              title="Permanently delete this student"
-            >
-              <UserX size={14} /> {deleting ? 'Deleting...' : 'Delete Student'}
-            </button>
+        {/* Profile Header */}
+        <div style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem', marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: 'clamp(1.2rem, 4vw, 1.8rem)', color: 'var(--text-main)', paddingRight: '2.5rem' }}>{profile.name}</h2>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+            <span className="badge badge-indigo">{profile.classId?.className || profile.village || 'Unassigned'}</span>
+            <span className="badge badge-green">Score: {profile.points} pts</span>
           </div>
         </div>
 
-        {activeTab === 'logs' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', overflowY: 'auto', paddingRight: '1rem', flex: 1 }}>
-            
-            {/* Activity Logs */}
-            <div>
-              <h3 style={{ marginBottom: '1rem', color: 'var(--text-sub)' }}>Recent Activities</h3>
-              {profile.activityLogs.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No activity logs.</p> : null}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {profile.activityLogs.map(log => (
-                  <div key={log._id} style={{ backgroundColor: 'var(--bg-dark)', padding: '1rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <p style={{ fontSize: '0.9rem', fontWeight: 600 }}>{log.type}: {log.description}</p>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        {new Date(log.date).toLocaleDateString()} • <span style={{color: 'var(--accent-green)'}}>+{log.pointsAwarded} pts</span>
-                        {log.loggedBy && <span style={{ color: 'var(--accent-indigo)', fontStyle: 'italic', marginLeft: 8 }}>by {log.loggedBy}</span>}
-                      </p>
+        {/* Tab Buttons */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <button 
+            type="button"
+            onClick={() => setActiveTab('logs')}
+            className={`btn ${activeTab === 'logs' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', flex: '1 1 auto' }}
+          >
+            Activity Logs
+          </button>
+          <button 
+            type="button"
+            onClick={() => setActiveTab('edit')}
+            className={`btn ${activeTab === 'edit' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', flex: '1 1 auto' }}
+          >
+            Edit &amp; Transfer
+          </button>
+          <button
+            type="button"
+            onClick={deleteStudent}
+            disabled={deleting}
+            className="btn btn-danger"
+            style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}
+            title="Permanently delete this student"
+          >
+            <UserX size={14} /> {deleting ? 'Deleting...' : 'Delete'}
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {activeTab === 'logs' ? (
+            <div className="profile-logs-grid">
+              {/* Activity Logs */}
+              <div>
+                <h3 style={{ marginBottom: '1rem', color: 'var(--text-sub)', fontSize: '0.95rem' }}>Recent Activities</h3>
+                {profile.activityLogs.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No activity logs.</p> : null}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {profile.activityLogs.map(log => (
+                    <div key={log._id} style={{ backgroundColor: 'var(--bg-dark)', padding: '0.85rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.type}: {log.description}</p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {new Date(log.date).toLocaleDateString()} • <span style={{color: 'var(--accent-green)'}}>+{log.pointsAwarded} pts</span>
+                          {log.loggedBy && <span style={{ color: 'var(--accent-indigo)', fontStyle: 'italic', marginLeft: 6 }}>by {log.loggedBy}</span>}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => deleteActivityLog(log._id)} className="btn btn-danger" style={{ padding: '0.4rem', flexShrink: 0 }} title="Delete log & Sync Points">
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                    <button type="button" onClick={() => deleteActivityLog(log._id)} className="btn btn-danger" style={{ padding: '0.5rem' }} title="Delete log & Sync Points">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Attendance Logs */}
-            <div>
-              <h3 style={{ marginBottom: '1rem', color: 'var(--text-sub)' }}>Recent Attendance</h3>
-              {profile.attendanceLogs.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No attendance logs.</p> : null}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {profile.attendanceLogs.map(log => (
-                  <div key={log._id} style={{ backgroundColor: 'var(--bg-dark)', padding: '1rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <span className={`badge ${log.status === 'Present' ? 'badge-green' : log.status === 'Late' ? 'badge-amber' : 'badge-red'}`}>
-                        {log.status}
-                      </span>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-                        {new Date(log.date).toLocaleDateString()} • <span style={{color: 'var(--accent-green)'}}>+{log.pointsAwarded} pts</span>
-                        {log.loggedBy && <span style={{ color: 'var(--accent-indigo)', fontStyle: 'italic', marginLeft: 8 }}>by {log.loggedBy}</span>}
-                      </p>
+              {/* Attendance Logs */}
+              <div>
+                <h3 style={{ marginBottom: '1rem', color: 'var(--text-sub)', fontSize: '0.95rem' }}>Recent Attendance</h3>
+                {profile.attendanceLogs.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No attendance logs.</p> : null}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {profile.attendanceLogs.map(log => (
+                    <div key={log._id} style={{ backgroundColor: 'var(--bg-dark)', padding: '0.85rem', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span className={`badge ${log.status === 'Present' ? 'badge-green' : log.status === 'Late' ? 'badge-amber' : 'badge-red'}`}>
+                          {log.status}
+                        </span>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                          {new Date(log.date).toLocaleDateString()} • <span style={{color: 'var(--accent-green)'}}>+{log.pointsAwarded} pts</span>
+                          {log.loggedBy && <span style={{ color: 'var(--accent-indigo)', fontStyle: 'italic', marginLeft: 6 }}>by {log.loggedBy}</span>}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => deleteAttendanceLog(log._id)} className="btn btn-danger" style={{ padding: '0.4rem', flexShrink: 0 }} title="Delete record">
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                    <button type="button" onClick={() => deleteAttendanceLog(log._id)} className="btn btn-danger" style={{ padding: '0.5rem' }} title="Delete record">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
+          ) : (
+            <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-grid-2">
+                <div>
+                  <label style={labelStyle}>Full Name</label>
+                  <input type="text" className="input-field" required value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+                </div>
+                <div>
+                  <label style={labelStyle}>QR / Roll No</label>
+                  <input type="text" className="input-field" required value={editForm.rollNo} onChange={e => setEditForm({...editForm, rollNo: e.target.value})} />
+                </div>
+              </div>
 
-          </div>
-        ) : (
-          <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: '1rem', flex: 1 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Full Name</label>
-                <input type="text" className="input-field" required value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+              <div className="form-grid-2">
+                <div>
+                  <label style={labelStyle}>Father's Name</label>
+                  <input type="text" className="input-field" value={editForm.fatherName} onChange={e => setEditForm({...editForm, fatherName: e.target.value})} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Mother's Name</label>
+                  <input type="text" className="input-field" value={editForm.motherName} onChange={e => setEditForm({...editForm, motherName: e.target.value})} />
+                </div>
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>QR / Roll No</label>
-                <input type="text" className="input-field" required value={editForm.rollNo} onChange={e => setEditForm({...editForm, rollNo: e.target.value})} />
-              </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Father's Name</label>
-                <input type="text" className="input-field" value={editForm.fatherName} onChange={e => setEditForm({...editForm, fatherName: e.target.value})} />
+              <div className="form-grid-2">
+                <div>
+                  <label style={labelStyle}>Primary Phone</label>
+                  <input type="text" className="input-field" value={editForm.phoneNumber} onChange={e => setEditForm({...editForm, phoneNumber: e.target.value})} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Alternative Phone</label>
+                  <input type="text" className="input-field" value={editForm.altPhone} onChange={e => setEditForm({...editForm, altPhone: e.target.value})} />
+                </div>
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Mother's Name</label>
-                <input type="text" className="input-field" value={editForm.motherName} onChange={e => setEditForm({...editForm, motherName: e.target.value})} />
-              </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Primary Phone</label>
-                <input type="text" className="input-field" value={editForm.phoneNumber} onChange={e => setEditForm({...editForm, phoneNumber: e.target.value})} />
+              <div className="form-grid-3">
+                <div>
+                  <label style={labelStyle}>Age</label>
+                  <input type="number" className="input-field" value={editForm.age} onChange={e => setEditForm({...editForm, age: e.target.value})} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Gender</label>
+                  <select className="input-field" value={editForm.gender} onChange={e => setEditForm({...editForm, gender: e.target.value})} style={{ appearance: 'none' }}>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Date of Birth</label>
+                  <input type="date" className="input-field" value={editForm.dob} onChange={e => setEditForm({...editForm, dob: e.target.value})} />
+                </div>
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Alternative Phone</label>
-                <input type="text" className="input-field" value={editForm.altPhone} onChange={e => setEditForm({...editForm, altPhone: e.target.value})} />
-              </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '1.2rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Age</label>
-                <input type="number" className="input-field" value={editForm.age} onChange={e => setEditForm({...editForm, age: e.target.value})} />
+              <div className="form-grid-2">
+                <div>
+                  <label style={labelStyle}>Village / Area</label>
+                  <input type="text" className="input-field" value={editForm.village} onChange={e => setEditForm({...editForm, village: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ ...labelStyle, color: 'var(--accent-indigo)', fontWeight: 700 }}>Transfer Class</label>
+                  <select className="input-field" value={editForm.classId} onChange={e => setEditForm({...editForm, classId: e.target.value})} style={{ appearance: 'none', borderColor: 'var(--accent-indigo)' }}>
+                    <option value="">Select Class to Transfer...</option>
+                    {classes.map(c => <option key={c._id} value={c._id}>{c.className} ({c.ageGroup})</option>)}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Gender</label>
-                <select className="input-field" value={editForm.gender} onChange={e => setEditForm({...editForm, gender: e.target.value})} style={{ appearance: 'none' }}>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Date of Birth</label>
-                <input type="date" className="input-field" value={editForm.dob} onChange={e => setEditForm({...editForm, dob: e.target.value})} />
-              </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' }}>Village / Area</label>
-                <input type="text" className="input-field" value={editForm.village} onChange={e => setEditForm({...editForm, village: e.target.value})} />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)', fontWeight: 600, color: 'var(--accent-indigo)' }}>Transfer Class (Class Assignment)</label>
-                <select className="input-field" value={editForm.classId} onChange={e => setEditForm({...editForm, classId: e.target.value})} style={{ appearance: 'none', borderColor: 'var(--accent-indigo)', borderWidth: 1.5 }}>
-                  <option value="">Select Class to Transfer...</option>
-                  {classes.map(c => <option key={c._id} value={c._id}>{c.className} ({c.ageGroup})</option>)}
-                </select>
-              </div>
-            </div>
-
-            <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', alignSelf: 'flex-end', padding: '0.75rem 2rem' }} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Student Changes & Transfer Class'}
-            </button>
-          </form>
-        )}
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Changes & Transfer Class'}
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
+const labelStyle = { display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-sub)' };

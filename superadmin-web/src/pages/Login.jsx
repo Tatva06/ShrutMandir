@@ -14,7 +14,6 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const res = await api.post('/auth/login', { username, password });
       if (res.data.success) {
@@ -36,9 +35,10 @@ export default function Login() {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      minHeight: '100vh', backgroundColor: 'var(--bg-dark)'
+      minHeight: '100vh', backgroundColor: 'var(--bg-dark)',
+      padding: '1.5rem'
     }}>
-      <div className="glass-card" style={{ width: 400, padding: '2.5rem' }}>
+      <div className="glass-card" style={{ width: '100%', maxWidth: 420, padding: 'clamp(1.5rem, 5vw, 2.5rem)' }}>
         <h2 style={{ textAlign: 'center', marginBottom: '0.5rem' }}>ShrutMandir</h2>
         <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: '2rem' }}>
           SuperAdmin Portal
@@ -55,30 +55,14 @@ export default function Login() {
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-sub)', fontSize: '0.85rem', marginBottom: 4, fontWeight: 600 }}>
               <User size={14} /> Username
             </label>
-            <input
-              type="text"
-              className="input-field"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. rahul_jain"
-              required
-            />
+            <input type="text" className="input-field" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="e.g. rahul_jain" required />
           </div>
-
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-sub)', fontSize: '0.85rem', marginBottom: 4, fontWeight: 600 }}>
               <Lock size={14} /> Password
             </label>
-            <input
-              type="password"
-              className="input-field"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
+            <input type="password" className="input-field" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
           </div>
-
           <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem' }} disabled={loading}>
             {loading ? 'Logging in...' : <><LogIn size={18} /> Sign In</>}
           </button>

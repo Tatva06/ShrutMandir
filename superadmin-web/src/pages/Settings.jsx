@@ -104,9 +104,9 @@ export default function Settings() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
         <h1>Global Settings</h1>
-        <button onClick={handleSave} className="btn btn-primary" disabled={saving}>
+        <button onClick={handleSave} className="btn btn-primary" disabled={saving} style={{ flexShrink: 0 }}>
           <Save size={16} /> {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
@@ -114,7 +114,7 @@ export default function Settings() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
         {/* ── Row 1: Cutoff Time + Gatha List ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
+        <div className="settings-top-grid">
 
           {/* Cutoff Time */}
           <div className="glass-card" style={{ alignSelf: 'start' }}>

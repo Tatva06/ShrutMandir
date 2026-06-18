@@ -7,6 +7,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_BASE } from '../config';
+import LegalFooter from '../components/LegalFooter';
 
 // IST = UTC+5:30 — arithmetic avoids Intl timezone API (which can fail in some envs)
 function todayString() {
@@ -270,19 +271,22 @@ export default function ClassListScreen({ route, navigation }) {
           />
         )}
         ListFooterComponent={
-          attendanceMode ? (
-            <TouchableOpacity
-              style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
-              onPress={handleSubmit}
-              disabled={submitting}
-              activeOpacity={0.85}
-            >
-              {submitting
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.submitBtnText}>Submit Attendance  ·  {presentCount} Present</Text>
-              }
-            </TouchableOpacity>
-          ) : null
+          <View style={{ paddingBottom: 20 }}>
+            {attendanceMode && (
+              <TouchableOpacity
+                style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
+                onPress={handleSubmit}
+                disabled={submitting}
+                activeOpacity={0.85}
+              >
+                {submitting
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.submitBtnText}>Submit Attendance  ·  {presentCount} Present</Text>
+                }
+              </TouchableOpacity>
+            )}
+            <LegalFooter />
+          </View>
         }
       />
     </SafeAreaView>
