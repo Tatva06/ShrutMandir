@@ -1,7 +1,20 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+/**
+ * ScannerScreen.js
+ *
+ * Blur fix strategy:
+ *  - studentCache, scanned-lock, processing-lock all live in REFS (not state)
+ *    so scan completions never trigger a re-render of CameraView.
+ *  - CameraView is isolated in a React.memo'd child <StableCamera> that only
+ *    receives torchOn (boolean) and the barcode handler — both are stable refs,
+ *    so the camera component NEVER re-renders after mount.
+ *  - UI state (toast, lastScan, sessionLog, etc.) is in the parent but cannot
+ *    reach StableCamera because it is memo'd with no relevant props.
+ */
+
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Alert, StatusBar,
-  ActivityIndicator, Modal, ScrollView, TextInput, Animated, Dimensions,
+  ActivityIndicator, Modal, ScrollView, TextInput, Animated,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
@@ -11,169 +24,116 @@ import { API_BASE } from '../config';
 import LegalFooter from '../components/LegalFooter';
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const SCAN_COOLDOWN_MS = 800; // Reduced — cache makes lookups instant
-const { width: SCREEN_W } = Dimensions.get('window');
+const SCAN_COOLDOWN_MS = 800;
 const RETICLE = 240;
 const CORNER = 26;
 const CW = 4;
 
 const MODES = ['Attendance', 'Gatha', 'General'];
 
-// IST = UTC+5:30
 function todayString() {
   const now = new Date();
   const istMs = now.getTime() + (5 * 60 + 30) * 60 * 1000;
   return new Date(istMs).toISOString().split('T')[0];
 }
 
-// ── Offline Queue helpers ─────────────────────────────────────────────────────
+// ── Offline Queue ─────────────────────────────────────────────────────────────
 const QUEUE_KEY = 'attendance_offline_queue';
-
 async function loadQueue() {
-  try {
-    const raw = await AsyncStorage.getItem(QUEUE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+  try { const r = await AsyncStorage.getItem(QUEUE_KEY); return r ? JSON.parse(r) : []; } catch { return []; }
 }
-
-async function saveQueue(queue) {
-  try { await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue)); } catch {}
+async function saveQueue(q) {
+  try { await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch {}
 }
-
 async function flushQueue(token) {
   const queue = await loadQueue();
-  if (queue.length === 0) return;
+  if (!queue.length) return 0;
   const remaining = [];
   for (const item of queue) {
     try {
-      const res = await fetch(`${API_BASE}/students/${item.studentId}/attendance`, {
+      const r = await fetch(`${API_BASE}/students/${item.studentId}/attendance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify(item.body),
       });
-      if (!res.ok) remaining.push(item);
+      if (!r.ok) remaining.push(item);
     } catch { remaining.push(item); }
   }
   await saveQueue(remaining);
-  return queue.length - remaining.length; // how many flushed
+  return queue.length - remaining.length;
 }
+
+// ── Isolated Camera component — NEVER re-renders after mount ─────────────────
+// Only torchOn is a prop; the handler is a stable ref so memo equality holds.
+const StableCamera = memo(({ torchOn, onBarcode }) => (
+  <CameraView
+    style={StyleSheet.absoluteFillObject}
+    facing="back"
+    enableTorch={torchOn}
+    barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+    onBarcodeScanned={onBarcode}
+  />
+), (prev, next) => prev.torchOn === next.torchOn && prev.onBarcode === next.onBarcode);
+
+// ── Animated scan-line (own component so its re-renders stay isolated) ────────
+const ScanLine = memo(() => {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const run = () => Animated.sequence([
+      Animated.timing(anim, { toValue: 1, duration: 1600, useNativeDriver: true }),
+      Animated.timing(anim, { toValue: 0, duration: 1600, useNativeDriver: true }),
+    ]).start(run);
+    run();
+  }, [anim]);
+  return (
+    <Animated.View style={[styles.scanLine, {
+      transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, RETICLE - 4] }) }],
+    }]} />
+  );
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ScannerScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [mode, setMode] = useState('Attendance');
-  const [scanned, setScanned] = useState(false);
+
+  // UI-only state (drives the overlay, NOT the camera)
+  const [mode, setMode]           = useState('Attendance');
+  const [torchOn, setTorchOn]     = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [torchOn, setTorchOn] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-
-  // ── Local student cache ───────────────────────────────────────────────────
-  const [studentCache, setStudentCache] = useState({}); // { rollNo: studentObj }
   const [cacheLoaded, setCacheLoaded] = useState(false);
-  const [offlineCount, setOfflineCount] = useState(0); // pending offline items
-
-  // ── Session scan log ──────────────────────────────────────────────────────
-  const [sessionLog, setSessionLog] = useState([]); // [{ name, status, time, pts }]
-
-  // ── Last scanned card ─────────────────────────────────────────────────────
-  const [lastScan, setLastScan] = useState(null); // { name, className, status, pts }
-  const lastScanAnim = useRef(new Animated.Value(0)).current;
-  const lastScanTimer = useRef(null);
-
-  const cooldownRef = useRef(null);
-  const scanLineAnim = useRef(new Animated.Value(0)).current;
-  const [teacherName, setTeacherName] = useState('Unknown Teacher');
-  const [userToken, setUserToken] = useState(null);
-
-  const [gathaList, setGathaList] = useState([
-    { name: 'Navkar Mantra', pts: 10 },
-    { name: 'Logassa Sutra', pts: 20 },
-    { name: 'Uvasaggaharam Stotra', pts: 20 },
-    { name: 'Bhaktamar Stotra', pts: 50 },
-    { name: 'Namutthunam Sutra', pts: 15 },
-    { name: 'Aarti', pts: 10 },
-  ]);
-  const [lateCutoff, setLateCutoff] = useState({ hour: 9, minute: 15 });
-
-  const [toast, setToast] = useState(null);
-  const toastAnim = useRef(new Animated.Value(-80)).current;
-
-  const [gathaModal, setGathaModal] = useState(false);
-  const [modalStudent, setModalStudent] = useState(null);
-  const [selectedGathas, setSelectedGathas] = useState({});
-  const [customGatha, setCustomGatha] = useState('');
-  const [customPts, setCustomPts] = useState('');
+  const [cacheSize, setCacheSize] = useState(0);
+  const [offlineCount, setOfflineCount] = useState(0);
+  const [sessionLog, setSessionLog]     = useState([]);
+  const [historyOpen, setHistoryOpen]   = useState(false);
+  const [toast, setToast]               = useState(null);
+  const [lastScan, setLastScan]         = useState(null);
+  const [gathaModal, setGathaModal]     = useState(false);
   const [gathaSubmitting, setGathaSubmitting] = useState(false);
+  const [selectedGathas, setSelectedGathas]   = useState({});
+  const [customGatha, setCustomGatha]         = useState('');
+  const [customPts, setCustomPts]             = useState('');
 
-  // ── Scan-line animation ───────────────────────────────────────────────────
-  useEffect(() => {
-    const runAnim = () => {
-      Animated.sequence([
-        Animated.timing(scanLineAnim, { toValue: 1, duration: 1600, useNativeDriver: true }),
-        Animated.timing(scanLineAnim, { toValue: 0, duration: 1600, useNativeDriver: true }),
-      ]).start(runAnim);
-    };
-    runAnim();
-  }, [scanLineAnim]);
+  // ── Refs — never cause camera re-renders ─────────────────────────────────
+  const scanLock        = useRef(false);  // replaces scanned+processing state for the handler
+  const cooldownRef     = useRef(null);
+  const lastScanTimer   = useRef(null);
+  const cacheRef        = useRef({});     // { rollNo: studentObj } — no state update needed
+  const teacherNameRef  = useRef('Unknown Teacher');
+  const lateCutoffRef   = useRef({ hour: 9, minute: 15 });
+  const gathaListRef    = useRef([
+    { name: 'Navkar Mantra', pts: 10 }, { name: 'Logassa Sutra', pts: 20 },
+    { name: 'Uvasaggaharam Stotra', pts: 20 }, { name: 'Bhaktamar Stotra', pts: 50 },
+    { name: 'Namutthunam Sutra', pts: 15 }, { name: 'Aarti', pts: 10 },
+  ]);
+  const modalStudentRef = useRef(null);   // for Gatha modal
+  const [modalStudentUI, setModalStudentUI] = useState(null); // just for display
 
-  // ── Init: load teacher, settings, student cache, flush offline queue ──────
-  useEffect(() => {
-    const init = async () => {
-      try {
-        // Load teacher & token
-        const userDataStr = await AsyncStorage.getItem('userData');
-        const token = await AsyncStorage.getItem('userToken');
-        if (userDataStr) {
-          const userData = JSON.parse(userDataStr);
-          setTeacherName(userData.name || 'Unknown Teacher');
-        }
-        if (token) setUserToken(token);
+  // Animations
+  const toastAnim   = useRef(new Animated.Value(-80)).current;
+  const lastScanAnim = useRef(new Animated.Value(0)).current;
 
-        // Flush offline queue in background
-        if (token) {
-          const flushed = await flushQueue(token);
-          if (flushed > 0) showToast(`📡 Synced ${flushed} offline record${flushed > 1 ? 's' : ''}`, '#6366f1');
-        }
-        const queue = await loadQueue();
-        setOfflineCount(queue.length);
-
-        // Load settings
-        const settingsRes = await fetch(`${API_BASE}/settings`);
-        const settingsJson = await settingsRes.json();
-        if (settingsJson.success && settingsJson.data) {
-          const s = settingsJson.data;
-          if (s.gathaList?.length > 0) setGathaList(s.gathaList);
-          if (s.lateCutoffTime) {
-            const parts = s.lateCutoffTime.split(':');
-            setLateCutoff({ hour: parseInt(parts[0]) || 9, minute: parseInt(parts[1]) || 15 });
-          }
-        }
-
-        // 🚀 Pre-load student cache — this is the key speed improvement
-        const studentsRes = await fetch(`${API_BASE}/students`);
-        const studentsJson = await studentsRes.json();
-        if (studentsJson.success && studentsJson.data) {
-          const cache = {};
-          for (const s of studentsJson.data) {
-            cache[String(s.rollNo).trim()] = s;
-          }
-          setStudentCache(cache);
-        }
-        setCacheLoaded(true);
-      } catch (err) {
-        console.error('Init error:', err);
-        setCacheLoaded(true); // allow use even if cache fails
-      }
-    };
-    init();
-    return () => {
-      clearTimeout(cooldownRef.current);
-      clearTimeout(lastScanTimer.current);
-    };
-  }, []);
-
-  // ── Toast helper ──────────────────────────────────────────────────────────
+  // ── Toast ─────────────────────────────────────────────────────────────────
   const showToast = useCallback((msg, color = '#22c55e') => {
     setToast({ msg, color });
     Animated.sequence([
@@ -183,55 +143,97 @@ export default function ScannerScreen({ navigation }) {
     ]).start(() => setToast(null));
   }, [toastAnim]);
 
-  // ── Show last-scan card ───────────────────────────────────────────────────
-  const showLastScan = useCallback((info) => {
+  // ── Last-scan card ────────────────────────────────────────────────────────
+  const showLastScanCard = useCallback((info) => {
     clearTimeout(lastScanTimer.current);
     setLastScan(info);
     Animated.spring(lastScanAnim, { toValue: 1, useNativeDriver: true, friction: 7 }).start();
     lastScanTimer.current = setTimeout(() => {
-      Animated.timing(lastScanAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => setLastScan(null));
+      Animated.timing(lastScanAnim, { toValue: 0, duration: 300, useNativeDriver: true })
+        .start(() => setLastScan(null));
     }, 3000);
   }, [lastScanAnim]);
 
-  // ── Find student from cache (instant) ─────────────────────────────────────
-  const findStudentFromCache = useCallback((rollNo) => {
-    const key = String(rollNo).trim();
-    return studentCache[key] || null;
-  }, [studentCache]);
+  // ── Init ──────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const userDataStr = await AsyncStorage.getItem('userData');
+        const token = await AsyncStorage.getItem('userToken');
+        if (userDataStr) {
+          const u = JSON.parse(userDataStr);
+          teacherNameRef.current = u.name || 'Unknown Teacher';
+        }
 
-  // ── Fallback: server lookup (if cache misses) ─────────────────────────────
-  const findStudentFromServer = useCallback(async (rollNo) => {
-    const res = await fetch(`${API_BASE}/students/by-roll/${encodeURIComponent(String(rollNo).trim())}`);
-    if (res.status === 404) return null;
-    if (!res.ok) throw new Error('Server error');
-    const json = await res.json();
-    return json.success ? json.data : null;
-  }, []);
+        // Flush offline queue
+        if (token) {
+          const flushed = await flushQueue(token);
+          if (flushed > 0) showToast(`📡 Synced ${flushed} offline record${flushed > 1 ? 's' : ''}`, '#6366f1');
+        }
+        const queue = await loadQueue();
+        setOfflineCount(queue.length);
 
-  const alreadyMarkedToday = useCallback((student) => {
-    const today = todayString();
-    return (student.attendanceLogs || []).some(l => l.date === today);
-  }, []);
+        // Fetch settings
+        try {
+          const sRes = await fetch(`${API_BASE}/settings`);
+          const sJson = await sRes.json();
+          if (sJson.success && sJson.data) {
+            if (sJson.data.gathaList?.length) gathaListRef.current = sJson.data.gathaList;
+            if (sJson.data.lateCutoffTime) {
+              const p = sJson.data.lateCutoffTime.split(':');
+              lateCutoffRef.current = { hour: parseInt(p[0]) || 9, minute: parseInt(p[1]) || 15 };
+            }
+          }
+        } catch {}
 
-  // ── Stable no-op ─────────────────────────────────────────────────────────
-  const noOp = useCallback(() => {}, []);
+        // Build student cache into a REF — no setState = no camera re-render
+        try {
+          const stRes = await fetch(`${API_BASE}/students`);
+          const stJson = await stRes.json();
+          if (stJson.success && stJson.data) {
+            const cache = {};
+            for (const s of stJson.data) cache[String(s.rollNo).trim()] = s;
+            cacheRef.current = cache;
+            setCacheSize(Object.keys(cache).length); // only update the counter chip
+          }
+        } catch {}
 
-  // ── Main scan handler ─────────────────────────────────────────────────────
-  const handleBarcode = useCallback(async ({ data }) => {
-    if (scanned || processing) return;
-    setScanned(true);
+        setCacheLoaded(true);
+      } catch (err) {
+        console.error('Init error:', err);
+        setCacheLoaded(true);
+      }
+    })();
+    return () => {
+      clearTimeout(cooldownRef.current);
+      clearTimeout(lastScanTimer.current);
+    };
+  }, [showToast]);
+
+  // ── Main scan handler — stored in a ref so StableCamera never gets a new prop ──
+  const handleBarcodeRef = useRef(null);
+  handleBarcodeRef.current = async ({ data }) => {
+    if (scanLock.current) return;
+    scanLock.current = true;
     setProcessing(true);
 
     try {
-      // 🚀 Try cache first — usually instant
-      let student = findStudentFromCache(data);
+      // Cache lookup — instant, no network
+      const key = String(data).trim();
+      let student = cacheRef.current[key] || null;
+
+      // Cache miss → server fallback
       if (!student) {
-        // Cache miss — fall back to server
-        student = await findStudentFromServer(data);
-        // Update cache with found student
-        if (student) {
-          setStudentCache(prev => ({ ...prev, [String(student.rollNo).trim()]: student }));
-        }
+        try {
+          const r = await fetch(`${API_BASE}/students/by-roll/${encodeURIComponent(key)}`);
+          if (r.ok) {
+            const j = await r.json();
+            if (j.success && j.data) {
+              student = j.data;
+              cacheRef.current[key] = student; // hydrate cache silently
+            }
+          }
+        } catch {}
       }
 
       if (!student) {
@@ -240,134 +242,105 @@ export default function ScannerScreen({ navigation }) {
         return;
       }
 
-      // ── ATTENDANCE MODE ──────────────────────────────────────────────────
+      // ── ATTENDANCE ──────────────────────────────────────────────────────
       if (mode === 'Attendance') {
-        if (alreadyMarkedToday(student)) {
+        const today = todayString();
+        const already = (student.attendanceLogs || []).some(l => l.date === today);
+
+        if (already) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           showToast(`⚠️  ${student.name} already marked today`, '#f59e0b');
-          showLastScan({ name: student.name, className: student.classId?.className || student.village || '—', status: 'Already Marked', pts: 0, color: '#f59e0b' });
+          showLastScanCard({ name: student.name, className: student.classId?.className || '—', status: 'Already Marked', pts: 0, color: '#f59e0b' });
           return;
         }
 
         const now = new Date();
-        const isLate = now.getHours() > lateCutoff.hour ||
-          (now.getHours() === lateCutoff.hour && now.getMinutes() >= lateCutoff.minute);
+        const lc = lateCutoffRef.current;
+        const isLate = now.getHours() > lc.hour || (now.getHours() === lc.hour && now.getMinutes() >= lc.minute);
         const status = isLate ? 'Late' : 'Present';
         const pts = isLate ? 5 : 10;
-
-        const body = { status, date: todayString(), loggedBy: teacherName };
+        const body = { status, date: today, loggedBy: teacherNameRef.current };
 
         try {
           const token = await AsyncStorage.getItem('userToken');
-          const res = await fetch(`${API_BASE}/students/${student._id}/attendance`, {
+          const r = await fetch(`${API_BASE}/students/${student._id}/attendance`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
             body: JSON.stringify(body),
           });
-          const respData = await res.json();
-
-          if (!res.ok) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            showToast(`⚠️  ${respData.message || 'Error marking attendance'}`, '#f59e0b');
-            return;
-          }
+          if (!r.ok) throw new Error('server');
         } catch {
-          // 📶 Network failed — queue for later
-          const queue = await loadQueue();
-          queue.push({ studentId: student._id, body });
-          await saveQueue(queue);
+          // Offline — queue it
+          const q = await loadQueue();
+          q.push({ studentId: student._id, body });
+          await saveQueue(q);
           setOfflineCount(prev => prev + 1);
-          showToast(`📶 Offline — queued for sync`, '#818cf8');
+          showToast('📶 Offline — queued for sync', '#818cf8');
         }
 
+        // Update cache so re-scan shows "already marked" without network
+        cacheRef.current[key] = {
+          ...student,
+          attendanceLogs: [...(student.attendanceLogs || []), { date: today, status }],
+        };
+
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        const toastMsg = isLate ? `🕐  ${student.name} — Late +${pts} pts` : `✅  ${student.name} — Present +${pts} pts`;
-        showToast(toastMsg, isLate ? '#f59e0b' : '#22c55e');
-
-        // Update local cache so re-scan shows "already marked"
-        setStudentCache(prev => ({
-          ...prev,
-          [String(student.rollNo).trim()]: {
-            ...student,
-            attendanceLogs: [...(student.attendanceLogs || []), { date: todayString(), status }],
-          },
-        }));
-
-        // Show last-scan card
-        showLastScan({
-          name: student.name,
-          className: student.classId?.className || student.village || '—',
-          status,
-          pts,
-          color: isLate ? '#f59e0b' : '#22c55e',
-        });
-
-        // Add to session log
-        setSessionLog(prev => [{
-          name: student.name,
-          className: student.classId?.className || student.village || '—',
-          status,
-          pts,
-          time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-        }, ...prev]);
+        showToast(isLate ? `🕐  ${student.name} — Late +${pts} pts` : `✅  ${student.name} — Present +${pts} pts`,
+          isLate ? '#f59e0b' : '#22c55e');
+        showLastScanCard({ name: student.name, className: student.classId?.className || student.village || '—', status, pts, color: isLate ? '#f59e0b' : '#22c55e' });
+        setSessionLog(prev => [{ name: student.name, className: student.classId?.className || '—', status, pts, time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) }, ...prev]);
       }
 
-      // ── GATHA MODE ──────────────────────────────────────────────────────
+      // ── GATHA ──────────────────────────────────────────────────────────
       else if (mode === 'Gatha') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        setModalStudent(student);
+        modalStudentRef.current = student;
+        setModalStudentUI(student);
         setSelectedGathas({});
         setCustomGatha('');
         setCustomPts('');
         setGathaModal(true);
       }
 
-      // ── GENERAL MODE ────────────────────────────────────────────────────
+      // ── GENERAL ────────────────────────────────────────────────────────
       else {
         navigation.navigate('Classes', { screen: 'StudentProfile', params: { student } });
       }
-    } catch (err) {
+    } catch {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       showToast('❌ Error — try again', '#ef4444');
     } finally {
       setProcessing(false);
-      cooldownRef.current = setTimeout(() => setScanned(false), SCAN_COOLDOWN_MS);
+      cooldownRef.current = setTimeout(() => { scanLock.current = false; }, SCAN_COOLDOWN_MS);
     }
-  }, [scanned, processing, mode, teacherName, lateCutoff, findStudentFromCache, findStudentFromServer, alreadyMarkedToday, showToast, showLastScan, navigation]);
+  };
+
+  // Stable wrapper — same object reference forever, so StableCamera.memo never fires
+  const stableHandleBarcodeRef = useRef(({ data }) => handleBarcodeRef.current({ data }));
 
   // ── Submit Gathas ──────────────────────────────────────────────────────────
   const submitGathas = async () => {
-    if (!modalStudent) return;
-    const items = gathaList.filter(g => selectedGathas[g.name]);
-    if (customGatha.trim() && Number(customPts) > 0) {
-      items.push({ name: customGatha.trim(), pts: Number(customPts) });
-    }
-    if (items.length === 0) { Alert.alert('Select at least one Gatha'); return; }
+    const student = modalStudentRef.current;
+    if (!student) return;
+    const items = gathaListRef.current.filter(g => selectedGathas[g.name]);
+    if (customGatha.trim() && Number(customPts) > 0) items.push({ name: customGatha.trim(), pts: Number(customPts) });
+    if (!items.length) { Alert.alert('Select at least one Gatha'); return; }
     setGathaSubmitting(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
       for (const g of items) {
-        const res = await fetch(`${API_BASE}/students/${modalStudent._id}/activity`, {
+        const r = await fetch(`${API_BASE}/students/${student._id}/activity`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-          body: JSON.stringify({ type: 'Gatha', description: g.name, pointsAwarded: g.pts, date: todayString(), loggedBy: teacherName }),
+          body: JSON.stringify({ type: 'Gatha', description: g.name, pointsAwarded: g.pts, date: todayString(), loggedBy: teacherNameRef.current }),
         });
-        if (!res.ok) throw new Error('Failed');
+        if (!r.ok) throw new Error('failed');
       }
       const totalPts = items.reduce((a, g) => a + g.pts, 0);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setGathaModal(false);
-      showToast(`✅  +${totalPts} pts → ${modalStudent.name}`, '#22c55e');
-      setSessionLog(prev => [{
-        name: modalStudent.name,
-        className: modalStudent.classId?.className || '—',
-        status: 'Gatha',
-        pts: totalPts,
-        time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-      }, ...prev]);
+      showToast(`✅  +${totalPts} pts → ${student.name}`, '#22c55e');
+      setSessionLog(prev => [{ name: student.name, className: student.classId?.className || '—', status: 'Gatha', pts: totalPts, time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) }, ...prev]);
     } catch {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', 'Could not save Gatha points.');
@@ -377,9 +350,7 @@ export default function ScannerScreen({ navigation }) {
   };
 
   // ── Permission screens ────────────────────────────────────────────────────
-  if (!permission) {
-    return <View style={styles.centered}><ActivityIndicator color="#6366f1" size="large" /></View>;
-  }
+  if (!permission) return <View style={styles.centered}><ActivityIndicator color="#6366f1" size="large" /></View>;
   if (!permission.granted) {
     return (
       <View style={styles.centered}>
@@ -398,53 +369,33 @@ export default function ScannerScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* ── Camera ── */}
-      <CameraView
-        style={StyleSheet.absoluteFillObject}
-        facing="back"
-        enableTorch={torchOn}
-        barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-        onBarcodeScanned={scanned ? noOp : handleBarcode}
-      />
+      {/* ── Camera — isolated, never re-renders from UI state ── */}
+      <StableCamera torchOn={torchOn} onBarcode={stableHandleBarcodeRef.current} />
 
-      {/* ── Dark overlay ── */}
-      <View style={styles.overlay}>
+      {/* ── Overlay UI — re-renders freely without touching camera ── */}
+      <View style={styles.overlay} pointerEvents="box-none">
 
         {/* Top bar */}
         <View style={styles.topBar}>
           <View style={styles.topRow}>
             <Text style={styles.topTitle}>🎵 ShrutMandir</Text>
             <View style={styles.topActions}>
-              {/* Torch button */}
-              <TouchableOpacity
-                style={[styles.iconBtn, torchOn && styles.iconBtnActive]}
-                onPress={() => setTorchOn(t => !t)}
-              >
+              <TouchableOpacity style={[styles.iconBtn, torchOn && styles.iconBtnActive]} onPress={() => setTorchOn(t => !t)}>
                 <Text style={styles.iconBtnText}>{torchOn ? '🔦' : '💡'}</Text>
               </TouchableOpacity>
-              {/* History button */}
-              <TouchableOpacity
-                style={[styles.iconBtn, sessionLog.length > 0 && styles.iconBtnActive]}
-                onPress={() => setHistoryOpen(true)}
-              >
+              <TouchableOpacity style={[styles.iconBtn, sessionLog.length > 0 && styles.iconBtnActive]} onPress={() => setHistoryOpen(true)}>
                 <Text style={styles.iconBtnText}>📋</Text>
                 {sessionLog.length > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{sessionLog.length}</Text>
-                  </View>
+                  <View style={styles.badge}><Text style={styles.badgeText}>{sessionLog.length}</Text></View>
                 )}
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Mode switcher */}
           <View style={styles.segmentControl}>
             {MODES.map(m => (
-              <TouchableOpacity
-                key={m}
-                style={[styles.segment, mode === m && styles.segmentActive]}
-                onPress={() => { setMode(m); setScanned(false); }}
-              >
+              <TouchableOpacity key={m} style={[styles.segment, mode === m && styles.segmentActive]}
+                onPress={() => { setMode(m); scanLock.current = false; }}>
                 <Text style={[styles.segmentText, mode === m && styles.segmentTextActive]}>{m}</Text>
               </TouchableOpacity>
             ))}
@@ -455,10 +406,9 @@ export default function ScannerScreen({ navigation }) {
             {mode === 'General' && 'Scan to open student profile'}
           </Text>
 
-          {/* Status row: cache + scan count + offline queue */}
           <View style={styles.statusRow}>
             <Text style={styles.statusChip}>
-              {cacheLoaded ? `⚡ ${Object.keys(studentCache).length} students cached` : '⏳ Loading cache…'}
+              {cacheLoaded ? `⚡ ${cacheSize} cached` : '⏳ Loading…'}
             </Text>
             {mode === 'Attendance' && scanCount > 0 && (
               <Text style={styles.statusChip}>✅ {scanCount} scanned</Text>
@@ -472,41 +422,22 @@ export default function ScannerScreen({ navigation }) {
         </View>
 
         {/* Reticle */}
-        <View style={styles.reticleRow}>
+        <View style={styles.reticleRow} pointerEvents="none">
           <View style={styles.sideFill} />
           <View style={styles.reticle}>
             <View style={[styles.corner, styles.cTL]} />
             <View style={[styles.corner, styles.cTR]} />
             <View style={[styles.corner, styles.cBL]} />
             <View style={[styles.corner, styles.cBR]} />
-            {/* Animated scan line */}
-            <Animated.View
-              style={[
-                styles.scanLine,
-                {
-                  transform: [{
-                    translateY: scanLineAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, RETICLE - 4],
-                    }),
-                  }],
-                },
-              ]}
-            />
+            <ScanLine />
           </View>
           <View style={styles.sideFill} />
         </View>
 
         {/* Bottom bar */}
         <View style={styles.bottomBar}>
-          {/* Last-scan preview card */}
           {lastScan && (
-            <Animated.View
-              style={[
-                styles.lastScanCard,
-                { borderLeftColor: lastScan.color, opacity: lastScanAnim, transform: [{ scale: lastScanAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }] }
-              ]}
-            >
+            <Animated.View style={[styles.lastScanCard, { borderLeftColor: lastScan.color, opacity: lastScanAnim, transform: [{ scale: lastScanAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }] }]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.lastScanName}>{lastScan.name}</Text>
                 <Text style={styles.lastScanClass}>{lastScan.className}</Text>
@@ -517,21 +448,18 @@ export default function ScannerScreen({ navigation }) {
               </View>
             </Animated.View>
           )}
-
           {processing
             ? <View style={styles.processingRow}><ActivityIndicator color="#fff" size="small" /><Text style={styles.processingText}>  Processing…</Text></View>
-            : <Text style={styles.idleText}>
-                {cacheLoaded ? 'Ready — point at QR code' : 'Loading student data…'}
-              </Text>
+            : <Text style={styles.idleText}>{cacheLoaded ? 'Ready — point at QR code' : 'Loading…'}</Text>
           }
-          <TouchableOpacity style={styles.resetBtn} onPress={() => setScanned(false)}>
+          <TouchableOpacity style={styles.resetBtn} onPress={() => { scanLock.current = false; }}>
             <Text style={styles.resetBtnText}>🔄  Reset Scanner</Text>
           </TouchableOpacity>
           <LegalFooter />
         </View>
       </View>
 
-      {/* ── Toast Banner ── */}
+      {/* ── Toast ── */}
       {toast && (
         <Animated.View style={[styles.toast, { backgroundColor: toast.color, transform: [{ translateY: toastAnim }] }]}>
           <Text style={styles.toastText}>{toast.msg}</Text>
@@ -549,29 +477,25 @@ export default function ScannerScreen({ navigation }) {
               </TouchableOpacity>
             </View>
             <Text style={styles.modalSub}>{sessionLog.length} record{sessionLog.length !== 1 ? 's' : ''} logged</Text>
-
-            {sessionLog.length === 0 ? (
-              <View style={{ padding: 40, alignItems: 'center' }}>
-                <Text style={{ color: '#818cf8', fontSize: 14 }}>No scans yet this session</Text>
-              </View>
-            ) : (
-              <ScrollView style={styles.historyList} showsVerticalScrollIndicator={false}>
-                {sessionLog.map((item, idx) => (
-                  <View key={idx} style={styles.historyRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.historyName}>{item.name}</Text>
-                      <Text style={styles.historyClass}>{item.className} · {item.time}</Text>
+            {sessionLog.length === 0
+              ? <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#818cf8', fontSize: 14 }}>No scans yet</Text></View>
+              : (
+                <ScrollView style={styles.historyList} showsVerticalScrollIndicator={false}>
+                  {sessionLog.map((item, idx) => (
+                    <View key={idx} style={styles.historyRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.historyName}>{item.name}</Text>
+                        <Text style={styles.historyClass}>{item.className} · {item.time}</Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={[styles.historyStatus, { color: item.status === 'Present' ? '#22c55e' : item.status === 'Late' ? '#f59e0b' : '#818cf8' }]}>{item.status}</Text>
+                        {item.pts > 0 && <Text style={styles.historyPts}>+{item.pts}</Text>}
+                      </View>
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={[styles.historyStatus, {
-                        color: item.status === 'Present' ? '#22c55e' : item.status === 'Late' ? '#f59e0b' : item.status === 'Gatha' ? '#818cf8' : '#94a3b8'
-                      }]}>{item.status}</Text>
-                      {item.pts > 0 && <Text style={styles.historyPts}>+{item.pts}</Text>}
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
-            )}
+                  ))}
+                </ScrollView>
+              )
+            }
           </View>
         </View>
       </Modal>
@@ -580,20 +504,15 @@ export default function ScannerScreen({ navigation }) {
       <Modal visible={gathaModal} animationType="slide" transparent onRequestClose={() => setGathaModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{modalStudent?.name}</Text>
-            <Text style={styles.modalSub}>⭐ {modalStudent?.points ?? 0} pts  ·  Select Gathas completed</Text>
-
+            <Text style={styles.modalTitle}>{modalStudentUI?.name}</Text>
+            <Text style={styles.modalSub}>⭐ {modalStudentUI?.points ?? 0} pts · Select Gathas completed</Text>
             <ScrollView style={styles.gathaList} showsVerticalScrollIndicator={false}>
-              {gathaList.map(g => {
-                const selected = !!selectedGathas[g.name];
+              {gathaListRef.current.map(g => {
+                const sel = !!selectedGathas[g.name];
                 return (
-                  <TouchableOpacity
-                    key={g.name}
-                    style={[styles.gathaRow, selected && styles.gathaRowSelected]}
-                    onPress={() => setSelectedGathas(prev => ({ ...prev, [g.name]: !prev[g.name] }))}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.gathaCheck}>{selected ? '☑' : '☐'}</Text>
+                  <TouchableOpacity key={g.name} style={[styles.gathaRow, sel && styles.gathaRowSelected]}
+                    onPress={() => setSelectedGathas(prev => ({ ...prev, [g.name]: !prev[g.name] }))} activeOpacity={0.8}>
+                    <Text style={styles.gathaCheck}>{sel ? '☑' : '☐'}</Text>
                     <Text style={styles.gathaName}>{g.name}</Text>
                     <Text style={styles.gathaPoints}>+{g.pts} pts</Text>
                   </TouchableOpacity>
@@ -605,7 +524,6 @@ export default function ScannerScreen({ navigation }) {
                 <TextInput style={styles.customInput} placeholder="Points…" placeholderTextColor="#4c4f6b" keyboardType="numeric" value={customPts} onChangeText={setCustomPts} />
               </View>
             </ScrollView>
-
             <View style={styles.modalFooter}>
               <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setGathaModal(false)}>
                 <Text style={styles.cancelModalBtnText}>Cancel</Text>
@@ -625,7 +543,6 @@ export default function ScannerScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   centered: { flex: 1, backgroundColor: '#0f0e17', justifyContent: 'center', alignItems: 'center', padding: 32 },
-
   permTitle: { color: '#e0e7ff', fontSize: 22, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
   permSub: { color: '#818cf8', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
   permBtn: { backgroundColor: '#6366f1', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32 },
@@ -633,29 +550,14 @@ const styles = StyleSheet.create({
 
   overlay: { flex: 1 },
 
-  // ── Top bar ──
-  topBar: {
-    backgroundColor: 'rgba(0,0,0,0.78)',
-    paddingTop: 54, paddingBottom: 16, paddingHorizontal: 18, alignItems: 'center',
-  },
-  topRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    width: '100%', marginBottom: 14,
-  },
+  topBar: { backgroundColor: 'rgba(0,0,0,0.78)', paddingTop: 54, paddingBottom: 14, paddingHorizontal: 18, alignItems: 'center' },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 14 },
   topTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
   topActions: { flexDirection: 'row', gap: 10 },
-
-  iconBtn: {
-    width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center', justifyContent: 'center', position: 'relative',
-  },
+  iconBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', position: 'relative' },
   iconBtnActive: { backgroundColor: 'rgba(99,102,241,0.35)', borderWidth: 1, borderColor: '#6366f1' },
   iconBtnText: { fontSize: 18 },
-  badge: {
-    position: 'absolute', top: -5, right: -5, backgroundColor: '#6366f1',
-    borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 3,
-  },
+  badge: { position: 'absolute', top: -5, right: -5, backgroundColor: '#6366f1', borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
 
   segmentControl: { flexDirection: 'row', backgroundColor: '#0f0e17aa', borderRadius: 12, padding: 4, marginBottom: 8 },
@@ -666,66 +568,43 @@ const styles = StyleSheet.create({
   modeHint: { color: '#c7d2fe', fontSize: 12, marginBottom: 10 },
 
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
-  statusChip: {
-    fontSize: 11, color: '#a5b4fc', fontWeight: '600',
-    backgroundColor: 'rgba(99,102,241,0.15)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)',
-    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3,
-  },
+  statusChip: { fontSize: 11, color: '#a5b4fc', fontWeight: '600', backgroundColor: 'rgba(99,102,241,0.15)', borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
 
-  // ── Reticle ──
   reticleRow: { flexDirection: 'row', height: RETICLE },
   sideFill: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
   reticle: { width: RETICLE, height: RETICLE, backgroundColor: 'transparent' },
-
   corner: { position: 'absolute', width: CORNER, height: CORNER, borderColor: '#6366f1' },
   cTL: { top: 0, left: 0, borderTopWidth: CW, borderLeftWidth: CW },
   cTR: { top: 0, right: 0, borderTopWidth: CW, borderRightWidth: CW },
   cBL: { bottom: 0, left: 0, borderBottomWidth: CW, borderLeftWidth: CW },
   cBR: { bottom: 0, right: 0, borderBottomWidth: CW, borderRightWidth: CW },
-
   scanLine: { position: 'absolute', left: 6, right: 6, height: 2, backgroundColor: '#6366f1', borderRadius: 1, opacity: 0.95 },
 
-  // ── Bottom bar ──
-  bottomBar: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 28, paddingHorizontal: 20,
-  },
+  bottomBar: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 28, paddingHorizontal: 20 },
   processingRow: { flexDirection: 'row', alignItems: 'center' },
   processingText: { color: '#fff', fontSize: 15 },
   idleText: { color: '#c7d2fe', fontSize: 14 },
   resetBtn: { backgroundColor: 'rgba(99,102,241,0.25)', borderWidth: 1, borderColor: '#6366f1', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 24 },
   resetBtnText: { color: '#a5b4fc', fontSize: 14, fontWeight: '600' },
 
-  // ── Last-scan preview card ──
-  lastScanCard: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: 'rgba(15,14,23,0.92)', borderRadius: 14,
-    borderLeftWidth: 4, paddingHorizontal: 14, paddingVertical: 10,
-    width: '100%', marginBottom: 4,
-  },
+  lastScanCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(15,14,23,0.92)', borderRadius: 14, borderLeftWidth: 4, paddingHorizontal: 14, paddingVertical: 10, width: '100%', marginBottom: 4 },
   lastScanName: { color: '#e0e7ff', fontSize: 15, fontWeight: '700' },
   lastScanClass: { color: '#818cf8', fontSize: 12, marginTop: 1 },
   lastScanStatus: { fontSize: 13, fontWeight: '700' },
   lastScanPts: { color: '#94a3b8', fontSize: 12 },
 
-  // ── Toast ──
   toast: { position: 'absolute', top: 0, left: 0, right: 0, paddingTop: 54, paddingBottom: 14, paddingHorizontal: 20, alignItems: 'center' },
   toastText: { color: '#fff', fontSize: 15, fontWeight: '700', textAlign: 'center' },
 
-  // ── Modals ──
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: '#1e1b4b', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 20, paddingHorizontal: 20, maxHeight: '82%' },
   modalTitle: { color: '#e0e7ff', fontSize: 20, fontWeight: '700', textAlign: 'center' },
   modalSub: { color: '#818cf8', fontSize: 13, textAlign: 'center', marginTop: 4, marginBottom: 14 },
-
   historyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   closeBtn: { padding: 6 },
   closeBtnText: { color: '#818cf8', fontSize: 18 },
   historyList: { maxHeight: 380 },
-  historyRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 11,
-    borderBottomWidth: 1, borderBottomColor: '#312e81',
-  },
+  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#312e81' },
   historyName: { color: '#e0e7ff', fontSize: 14, fontWeight: '600' },
   historyClass: { color: '#818cf8', fontSize: 12, marginTop: 2 },
   historyStatus: { fontSize: 13, fontWeight: '700' },
@@ -737,11 +616,9 @@ const styles = StyleSheet.create({
   gathaCheck: { fontSize: 20, color: '#818cf8', marginRight: 12, width: 24 },
   gathaName: { flex: 1, color: '#e0e7ff', fontSize: 14 },
   gathaPoints: { color: '#22c55e', fontSize: 13, fontWeight: '700' },
-
   customBlock: { paddingVertical: 14, gap: 8 },
   customLabel: { color: '#818cf8', fontSize: 12, fontWeight: '600' },
   customInput: { backgroundColor: '#0f0e17', borderRadius: 8, borderWidth: 1, borderColor: '#312e81', color: '#e0e7ff', padding: 10, fontSize: 14 },
-
   modalFooter: { flexDirection: 'row', gap: 10, paddingVertical: 16 },
   cancelModalBtn: { flex: 1, backgroundColor: '#312e81', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
   cancelModalBtnText: { color: '#818cf8', fontSize: 14, fontWeight: '600' },
