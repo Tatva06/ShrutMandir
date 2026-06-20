@@ -42,7 +42,7 @@ export default function TeacherProfileScreen({ userData, onLogout }) {
       <View style={styles.content}>
         <View style={styles.pageHeader}>
           <Image
-            source={require('../../assets/shrutmandir-logo.jpg')}
+            source={require('../../assets/shrutmandir-logo.png')}
             style={styles.pageLogo}
             resizeMode="contain"
           />

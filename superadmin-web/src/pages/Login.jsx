@@ -41,7 +41,7 @@ export default function Login() {
       <div className="glass-card" style={{ width: '100%', maxWidth: 420, padding: 'clamp(1.5rem, 5vw, 2.5rem)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
           <img
-            src="/shrutmandir-logo.jpg"
+            src="/shrutmandir-logo.png"
             alt="ShrutMandir"
             style={{
               width: 140,

@@ -59,7 +59,7 @@ export default function LoginScreen({ onLoginSuccess }) {
         {/* Logo */}
         <View style={styles.logoWrap}>
           <Image
-            source={require('../../assets/shrutmandir-logo.jpg')}
+            source={require('../../assets/shrutmandir-logo.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />

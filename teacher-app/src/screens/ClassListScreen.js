@@ -397,7 +397,7 @@ export default function ClassListScreen({ route, navigation }) {
               {/* Header */}
               <View style={styles.presentHeader}>
                 <Image
-                  source={require('../../assets/shrutmandir-logo.jpg')}
+                  source={require('../../assets/shrutmandir-logo.png')}
                   style={styles.presentLogo}
                   resizeMode="contain"
                 />
@@ -510,7 +510,7 @@ export default function ClassListScreen({ route, navigation }) {
             {/* ── Logo Header ── */}
             <View style={styles.logoHeader}>
               <Image
-                source={require('../../assets/shrutmandir-logo.jpg')}
+                source={require('../../assets/shrutmandir-logo.png')}
                 style={styles.headerLogoImg}
                 resizeMode="contain"
               />

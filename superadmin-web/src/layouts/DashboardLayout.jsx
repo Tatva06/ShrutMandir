@@ -45,7 +45,7 @@ export default function DashboardLayout() {
     <div className="app-container">
       {/* Mobile Top Bar */}
       <div className="mobile-topbar">
-        <img src="/shrutmandir-logo.jpg" alt="ShrutMandir" style={{ height: 44, objectFit: 'contain' }} />
+        <img src="/shrutmandir-logo.png" alt="ShrutMandir" style={{ height: 44, objectFit: 'contain' }} />
         <button className="menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
           {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -60,7 +60,7 @@ export default function DashboardLayout() {
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <img
-            src="/shrutmandir-logo.jpg"
+            src="/shrutmandir-logo.png"
             alt="ShrutMandir"
             style={{
               width: 130,

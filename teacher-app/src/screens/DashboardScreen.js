@@ -91,7 +91,7 @@ export default function DashboardScreen() {
             {/* ── Page Header with Logo ── */}
             <View style={styles.pageHeader}>
               <Image
-                source={require('../../assets/shrutmandir-logo.jpg')}
+                source={require('../../assets/shrutmandir-logo.png')}
                 style={styles.headerLogo}
                 resizeMode="contain"
               />

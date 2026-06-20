@@ -60,7 +60,7 @@ export default function ClassesHomeScreen({ navigation }) {
           <>
             <View style={styles.brandHeader}>
               <Image
-                source={require('../../assets/shrutmandir-logo.jpg')}
+                source={require('../../assets/shrutmandir-logo.png')}
                 style={styles.brandLogo}
                 resizeMode="contain"
               />

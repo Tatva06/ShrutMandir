@@ -86,7 +86,7 @@ export default function Dashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <img
-            src="/shrutmandir-logo.jpg"
+            src="/shrutmandir-logo.png"
             alt="ShrutMandir"
             style={{
               width: 64, height: 64, objectFit: 'contain',

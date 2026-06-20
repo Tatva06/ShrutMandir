@@ -397,7 +397,7 @@ export default function ScannerScreen({ navigation }) {
         <View style={styles.topBar}>
           <View style={styles.topRow}>
             <Image
-              source={require('../../assets/shrutmandir-logo.jpg')}
+              source={require('../../assets/shrutmandir-logo.png')}
               style={styles.topLogo}
               resizeMode="contain"
             />
