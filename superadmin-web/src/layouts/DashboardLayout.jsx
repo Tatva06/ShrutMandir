@@ -45,7 +45,7 @@ export default function DashboardLayout() {
     <div className="app-container">
       {/* Mobile Top Bar */}
       <div className="mobile-topbar">
-        <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--accent-indigo)' }}>ShrutMandir</h2>
+        <img src="/shrutmandir-logo.jpg" alt="ShrutMandir" style={{ height: 44, objectFit: 'contain' }} />
         <button className="menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
           {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -58,11 +58,21 @@ export default function DashboardLayout() {
 
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div style={{ marginBottom: '3rem' }}>
-          <h2 style={{ fontSize: '1.4rem', color: 'var(--accent-indigo)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            ShrutMandir
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 4 }}>
+        <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <img
+            src="/shrutmandir-logo.jpg"
+            alt="ShrutMandir"
+            style={{
+              width: 130,
+              height: 130,
+              objectFit: 'contain',
+              borderRadius: 20,
+              background: 'rgba(255,255,255,0.03)',
+              padding: 6,
+              boxShadow: '0 0 24px rgba(195,192,255,0.15)',
+            }}
+          />
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: 2, textAlign: 'center' }}>
             Logged in as <strong style={{ color: 'var(--text-sub)' }}>{user.name}</strong>
           </p>
         </div>

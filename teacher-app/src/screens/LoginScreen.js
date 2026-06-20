@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ActivityIndicator, StatusBar, KeyboardAvoidingView, Platform,
+  ActivityIndicator, StatusBar, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE } from '../config';
@@ -58,10 +58,11 @@ export default function LoginScreen({ onLoginSuccess }) {
       <View style={styles.card}>
         {/* Logo */}
         <View style={styles.logoWrap}>
-          <View style={styles.logoIcon}>
-            <Text style={styles.logoEmoji}>🎵</Text>
-          </View>
-          <Text style={styles.logoText}>ShrutMandir</Text>
+          <Image
+            source={require('../../assets/shrutmandir-logo.jpg')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={styles.logoSub}>TEACHER PORTAL</Text>
         </View>
 
@@ -144,16 +145,11 @@ const styles = StyleSheet.create({
 
   // Logo
   logoWrap: { alignItems: 'center', marginBottom: 36 },
-  logoIcon: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: 'rgba(134,130,255,0.15)',
-    borderWidth: 1, borderColor: 'rgba(134,130,255,0.35)',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 14,
-  },
-  logoEmoji: { fontSize: 32 },
-  logoText: {
-    fontSize: 26, fontWeight: '800', color: '#e6e0ec',
-    letterSpacing: -0.5, marginBottom: 4,
+  logoImage: {
+    width: 140,
+    height: 140,
+    marginBottom: 12,
+    borderRadius: 20,
   },
   logoSub: {
     fontSize: 11, fontWeight: '700', color: '#918fa0',

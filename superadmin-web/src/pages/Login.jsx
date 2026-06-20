@@ -39,10 +39,25 @@ export default function Login() {
       padding: '1.5rem'
     }}>
       <div className="glass-card" style={{ width: '100%', maxWidth: 420, padding: 'clamp(1.5rem, 5vw, 2.5rem)' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '0.5rem' }}>ShrutMandir</h2>
-        <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: '2rem' }}>
-          SuperAdmin Portal
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
+          <img
+            src="/shrutmandir-logo.jpg"
+            alt="ShrutMandir"
+            style={{
+              width: 140,
+              height: 140,
+              objectFit: 'contain',
+              borderRadius: 20,
+              background: 'rgba(255,255,255,0.03)',
+              padding: 6,
+              boxShadow: '0 0 30px rgba(195,192,255,0.2)',
+              marginBottom: '1rem',
+            }}
+          />
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', margin: 0, fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            SuperAdmin Portal
+          </p>
+        </div>
 
         {error && (
           <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: 'var(--accent-red)', padding: '0.75rem', borderRadius: 8, marginBottom: '1.5rem', fontSize: '0.9rem' }}>

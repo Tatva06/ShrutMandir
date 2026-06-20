@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
-  StyleSheet, SafeAreaView, StatusBar, RefreshControl,
+  StyleSheet, SafeAreaView, StatusBar, RefreshControl, Image,
 } from 'react-native';
 
 import { API_BASE } from '../config';
@@ -57,7 +57,19 @@ export default function ClassesHomeScreen({ navigation }) {
           <RefreshControl refreshing={refreshing} onRefresh={() => fetchClasses(true)} tintColor="#8682ff" />
         }
         ListHeaderComponent={
-          <Text style={styles.sectionHeader}>Select a Class</Text>
+          <>
+            <View style={styles.brandHeader}>
+              <Image
+                source={require('../../assets/shrutmandir-logo.jpg')}
+                style={styles.brandLogo}
+                resizeMode="contain"
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.brandName}>ShrutMandir</Text>
+                <Text style={styles.sectionHeader}>SELECT A CLASS</Text>
+              </View>
+            </View>
+          </>
         }
         renderItem={({ item }) => <ClassCard item={item} onPress={() =>
           navigation.navigate('ClassList', { classId: item._id, className: item.className })
@@ -109,9 +121,20 @@ const styles = StyleSheet.create({
   centered:    { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f0d15', gap: 12 },
   loadingText: { color: '#918fa0', fontSize: 15 },
   list:        { padding: 20, paddingBottom: 40 },
+
+  // Brand header
+  brandHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20,
+    backgroundColor: 'rgba(134,130,255,0.06)',
+    borderRadius: 18, padding: 14,
+    borderWidth: 1, borderColor: 'rgba(134,130,255,0.15)',
+  },
+  brandLogo: { width: 56, height: 56, borderRadius: 12 },
+  brandName: { color: '#e6e0ec', fontSize: 18, fontWeight: '800', marginBottom: 2, letterSpacing: -0.3 },
+
   sectionHeader: {
     color: '#8682ff', fontSize: 11, fontWeight: '700',
-    letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 16,
+    letterSpacing: 1.5, textTransform: 'uppercase',
   },
   card: {
     backgroundColor: 'rgba(43,41,50,0.5)',

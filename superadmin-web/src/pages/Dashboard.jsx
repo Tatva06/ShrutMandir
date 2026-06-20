@@ -84,14 +84,27 @@ export default function Dashboard() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ marginBottom: '0.25rem' }}>Daily Master Review</h1>
-          {lastUpdated && (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-              Last updated: {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              {refreshing && <span style={{ marginLeft: '0.5rem', color: 'var(--accent-indigo)' }}>↻ Refreshing…</span>}
-            </p>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <img
+            src="/shrutmandir-logo.jpg"
+            alt="ShrutMandir"
+            style={{
+              width: 64, height: 64, objectFit: 'contain',
+              borderRadius: 14,
+              background: 'rgba(255,255,255,0.03)',
+              padding: 4,
+              boxShadow: '0 0 20px rgba(195,192,255,0.15)',
+            }}
+          />
+          <div>
+            <h1 style={{ marginBottom: '0.25rem' }}>Daily Master Review</h1>
+            {lastUpdated && (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                Last updated: {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                {refreshing && <span style={{ marginLeft: '0.5rem', color: 'var(--accent-indigo)' }}>↻ Refreshing…</span>}
+              </p>
+            )}
+          </div>
         </div>
         <button
           className="btn btn-secondary"

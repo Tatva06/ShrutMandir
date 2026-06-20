@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
   StyleSheet, SafeAreaView, StatusBar, RefreshControl, Platform,
-  ScrollView,
+  ScrollView, Modal, TextInput, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -22,6 +22,15 @@ const STATUS_CONFIG = {
   Late:    { color: '#FBB040', bg: 'rgba(251,176,64,0.1)',  border: 'rgba(251,176,64,0.3)',  icon: '🕐', pts: '+5 pts'  },
 };
 
+const DEFAULT_GATHA_LIST = [
+  { name: 'Navkar Mantra', pts: 10 },
+  { name: 'Logassa Sutra', pts: 20 },
+  { name: 'Uvasaggaharam Stotra', pts: 20 },
+  { name: 'Bhaktamar Stotra', pts: 50 },
+  { name: 'Namutthunam Sutra', pts: 15 },
+  { name: 'Aarti', pts: 10 },
+];
+
 export default function ClassListScreen({ route, navigation }) {
   const { classId, className } = route.params;
 
@@ -34,10 +43,42 @@ export default function ClassListScreen({ route, navigation }) {
   const [attendanceMode, setAttendanceMode] = useState(false);
   const [statusMap,      setStatusMap]      = useState({});
   const [submitting,     setSubmitting]     = useState(false);
-  // Web-compatible confirm dialog state
   const [showConfirm,    setShowConfirm]    = useState(false);
 
+  // ── Present Students View ──────────────────────────────────────────────────
+  const [showPresent, setShowPresent] = useState(false);
+
+  // ── Activity Log Modal state ───────────────────────────────────────────────
+  const [logModal,       setLogModal]       = useState(false);
+  const [logTarget,      setLogTarget]      = useState(null); // student object
+  const [logType,        setLogType]        = useState('Gatha');
+  const [selectedGathas, setSelectedGathas] = useState({});
+  const [customDesc,     setCustomDesc]     = useState('');
+  const [customPts,      setCustomPts]      = useState('');
+  const [submittingLog,  setSubmittingLog]  = useState(false);
+  const [gathaList,      setGathaList]      = useState(DEFAULT_GATHA_LIST);
+  const [teacherName,    setTeacherName]    = useState('Unknown Teacher');
+  const [userToken,      setUserToken]      = useState('');
+
   const today = todayString();
+
+  // ── Load teacher data & settings ──────────────────────────────────────────
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const userDataStr = await AsyncStorage.getItem('userData');
+        const token = await AsyncStorage.getItem('userToken');
+        if (userDataStr) setTeacherName(JSON.parse(userDataStr).name || 'Unknown Teacher');
+        if (token) setUserToken(token);
+        const settingsRes = await fetch(`${API_BASE}/settings`);
+        const settingsJson = await settingsRes.json();
+        if (settingsJson.success && settingsJson.data?.gathaList?.length > 0) {
+          setGathaList(settingsJson.data.gathaList);
+        }
+      } catch {}
+    };
+    load();
+  }, []);
 
   // ── Fetch students & lock status ──────────────────────────────────────────
   const fetchAll = useCallback(async (isRefresh = false) => {
@@ -54,7 +95,6 @@ export default function ClassListScreen({ route, navigation }) {
         const classStudents = studJson.data.filter(s =>
           s.classId === classId || (s.classId && s.classId._id === classId)
         );
-        // Sort by roll number
         classStudents.sort((a, b) => {
           const na = isNaN(a.rollNo) ? a.rollNo : Number(a.rollNo);
           const nb = isNaN(b.rollNo) ? b.rollNo : Number(b.rollNo);
@@ -88,15 +128,20 @@ export default function ClassListScreen({ route, navigation }) {
   const absentCount  = Object.values(statusMap).filter(v => v === 'Absent').length;
   const lateCount    = Object.values(statusMap).filter(v => v === 'Late').length;
 
+  // Present students from locked attendance
+  const presentStudents = students.filter(s => {
+    const log = todayLog(s);
+    return log && (log.status === 'Present' || log.status === 'Late');
+  });
+
   const toggleStatus = (studentId, status) => {
     setStatusMap(prev => ({ ...prev, [studentId]: status }));
   };
 
   // ── Submit attendance ──────────────────────────────────────────────────────
-  // FIX: Alert.alert callbacks don't fire in browsers — use custom confirm UI
   const handleSubmit = () => {
     if (Platform.OS === 'web') {
-      setShowConfirm(true); // show our own confirm overlay
+      setShowConfirm(true);
     } else {
       const { Alert } = require('react-native');
       Alert.alert(
@@ -115,7 +160,7 @@ export default function ClassListScreen({ route, navigation }) {
     setSubmitting(true);
     try {
       const userDataStr = await AsyncStorage.getItem('userData');
-      const teacherName = userDataStr ? JSON.parse(userDataStr).name : 'Unknown Teacher';
+      const tName = userDataStr ? JSON.parse(userDataStr).name : 'Unknown Teacher';
       const token = await AsyncStorage.getItem('userToken');
 
       const attendanceData = students.map(s => ({
@@ -129,7 +174,7 @@ export default function ClassListScreen({ route, navigation }) {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ date: today, loggedBy: teacherName, attendanceData }),
+        body: JSON.stringify({ date: today, loggedBy: tName, attendanceData }),
       });
 
       if (!bulkRes.ok) {
@@ -138,7 +183,6 @@ export default function ClassListScreen({ route, navigation }) {
         throw new Error(errMsg);
       }
 
-      // Lock attendance
       await fetch(`${API_BASE}/classes/${classId}/lock-attendance`, {
         method: 'POST',
         headers: {
@@ -148,7 +192,6 @@ export default function ClassListScreen({ route, navigation }) {
         body: JSON.stringify({ date: today }),
       });
 
-      // Optimistic UI
       const pointsMap = { Present: 10, Late: 5, Absent: 0 };
       setStudents(prev => prev.map(s => {
         const status = statusMap[s._id] || 'Absent';
@@ -158,7 +201,7 @@ export default function ClassListScreen({ route, navigation }) {
           ...s,
           attendanceLogs: [
             ...(s.attendanceLogs || []),
-            { date: today, status, pointsAwarded: pointsMap[status] ?? 0, timestamp: new Date().toISOString(), loggedBy: teacherName },
+            { date: today, status, pointsAwarded: pointsMap[status] ?? 0, timestamp: new Date().toISOString(), loggedBy: tName },
           ],
         };
       }));
@@ -178,6 +221,81 @@ export default function ClassListScreen({ route, navigation }) {
     }
   };
 
+  // ── Open activity log modal for a student ────────────────────────────────
+  const openLogModal = (student) => {
+    setLogTarget(student);
+    setLogType('Gatha');
+    setSelectedGathas({});
+    setCustomDesc('');
+    setCustomPts('');
+    setLogModal(true);
+  };
+
+  // ── Submit activity log ───────────────────────────────────────────────────
+  const submitActivity = async () => {
+    if (!logTarget) return;
+    const items = [];
+
+    if (logType === 'Gatha') {
+      gathaList.filter(g => selectedGathas[g.name]).forEach(g =>
+        items.push({ type: 'Gatha', description: g.name, pointsAwarded: g.pts })
+      );
+      if (customDesc.trim() && Number(customPts) !== 0) {
+        items.push({ type: 'Gatha', description: customDesc.trim(), pointsAwarded: Number(customPts) });
+      }
+    } else if (logType === 'Aaradhana') {
+      if (!customDesc.trim() || !customPts) {
+        Platform.OS === 'web'
+          ? window.alert('Fill in description and points.')
+          : require('react-native').Alert.alert('Fill in description and points.');
+        return;
+      }
+      items.push({ type: 'Aaradhana', description: customDesc.trim(), pointsAwarded: Number(customPts) });
+    } else {
+      if (!customDesc.trim() || !customPts) {
+        Platform.OS === 'web'
+          ? window.alert('Fill in description and points.')
+          : require('react-native').Alert.alert('Fill in description and points.');
+        return;
+      }
+      items.push({ type: 'Conduct', description: customDesc.trim(), pointsAwarded: -Math.abs(Number(customPts)) });
+    }
+
+    if (items.length === 0) {
+      Platform.OS === 'web'
+        ? window.alert('Select at least one item.')
+        : require('react-native').Alert.alert('Select at least one item.');
+      return;
+    }
+
+    setSubmittingLog(true);
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      await Promise.all(
+        items.map(item =>
+          fetch(`${API_BASE}/students/${logTarget._id}/activity`, {
+            method:  'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ ...item, date: today, loggedBy: teacherName }),
+          })
+        )
+      );
+      setLogModal(false);
+      setLogTarget(null);
+      // Refresh students so points reflect
+      fetchAll(true);
+    } catch {
+      Platform.OS === 'web'
+        ? window.alert('Could not save activity log.')
+        : require('react-native').Alert.alert('Error', 'Could not save activity log.');
+    } finally {
+      setSubmittingLog(false);
+    }
+  };
+
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -188,7 +306,168 @@ export default function ClassListScreen({ route, navigation }) {
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Present Students Modal ─────────────────────────────────────────────────
+  if (showPresent) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#0f0d15" />
+
+        {/* Activity Log Modal */}
+        <Modal visible={logModal} animationType="slide" transparent onRequestClose={() => setLogModal(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Log Activity</Text>
+              <Text style={styles.modalSub}>{logTarget?.name}</Text>
+
+              <View style={styles.typeRow}>
+                {['Gatha', 'Aaradhana', 'Conduct'].map(t => (
+                  <TouchableOpacity
+                    key={t}
+                    style={[styles.typeBtn, logType === t && styles.typeBtnActive]}
+                    onPress={() => setLogType(t)}
+                  >
+                    <Text style={[styles.typeBtnText, logType === t && styles.typeBtnTextActive]}>{t}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+                {logType === 'Gatha' && gathaList.map(g => {
+                  const sel = !!selectedGathas[g.name];
+                  return (
+                    <TouchableOpacity
+                      key={g.name}
+                      style={[styles.gathaRow, sel && styles.gathaRowSel]}
+                      onPress={() => setSelectedGathas(p => ({ ...p, [g.name]: !p[g.name] }))}
+                    >
+                      <Text style={styles.check}>{sel ? '☑' : '☐'}</Text>
+                      <Text style={styles.gathaName}>{g.name}</Text>
+                      <Text style={styles.gathaPts}>+{g.pts}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <View style={{ gap: 8, paddingTop: 8 }}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder={logType === 'Gatha' ? 'Custom Gatha name (optional)…' : 'Description…'}
+                    placeholderTextColor="#918fa0"
+                    value={customDesc}
+                    onChangeText={setCustomDesc}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder={logType === 'Conduct' ? 'Points to deduct…' : 'Points…'}
+                    placeholderTextColor="#918fa0"
+                    keyboardType="numeric"
+                    value={customPts}
+                    onChangeText={setCustomPts}
+                  />
+                </View>
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setLogModal(false)}>
+                  <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalSubmitBtn, submittingLog && { opacity: 0.5 }]}
+                  onPress={submitActivity}
+                  disabled={submittingLog}
+                >
+                  {submittingLog
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={styles.modalSubmitBtnText}>Submit</Text>
+                  }
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <FlatList
+          data={presentStudents}
+          keyExtractor={item => item._id}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => fetchAll(true)} tintColor="#8682ff" />
+          }
+          ListHeaderComponent={
+            <>
+              {/* Header */}
+              <View style={styles.presentHeader}>
+                <Image
+                  source={require('../../assets/shrutmandir-logo.jpg')}
+                  style={styles.presentLogo}
+                  resizeMode="contain"
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.presentTitle}>Present Students</Text>
+                  <Text style={styles.presentSub}>{className}  ·  {today}</Text>
+                </View>
+                <TouchableOpacity style={styles.backBtn} onPress={() => setShowPresent(false)}>
+                  <Text style={styles.backBtnText}>✕ Close</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.presentStatRow}>
+                <View style={[styles.presentStat, { borderColor: 'rgba(74,222,128,0.4)' }]}>
+                  <Text style={[styles.presentStatNum, { color: '#4ADE80' }]}>{presentStudents.length}</Text>
+                  <Text style={[styles.presentStatLabel, { color: '#4ADE80' }]}>Present / Late</Text>
+                </View>
+                <View style={[styles.presentStat, { borderColor: 'rgba(134,130,255,0.4)' }]}>
+                  <Text style={[styles.presentStatNum, { color: '#8682ff' }]}>{students.length}</Text>
+                  <Text style={[styles.presentStatLabel, { color: '#8682ff' }]}>Total</Text>
+                </View>
+              </View>
+
+              <Text style={styles.countLabel}>Tap ➕ to log activity for a student</Text>
+            </>
+          }
+          renderItem={({ item }) => {
+            const log = todayLog(item);
+            const cfg = STATUS_CONFIG[log?.status] || STATUS_CONFIG.Present;
+            const nameParts = (item.name || '').trim().split(/\s+/);
+            const initials  = (nameParts[0]?.[0] ?? '') + (nameParts[1]?.[0] ?? '');
+            return (
+              <View style={[styles.presentCard, { borderColor: cfg.border }]}>
+                <TouchableOpacity
+                  style={styles.presentCardLeft}
+                  onPress={() => navigation.navigate('StudentProfile', { student: item })}
+                  activeOpacity={0.75}
+                >
+                  <View style={[styles.presentAvatar, { borderColor: cfg.color + '55' }]}>
+                    <Text style={styles.presentAvatarText}>{initials.toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.presentNameBlock}>
+                    <Text style={styles.presentName}>{item.name}</Text>
+                    <Text style={styles.presentSub2}>Roll {item.rollNo}  ·  ⭐ {item.points || 0} pts</Text>
+                    <View style={[styles.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+                      <Text style={{ color: cfg.color, fontSize: 11, fontWeight: '700' }}>
+                        {cfg.icon}  {log?.status}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.logBtn} onPress={() => openLogModal(item)} activeOpacity={0.8}>
+                  <Text style={styles.logBtnText}>➕{'\n'}Log</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={styles.emptyWrap}>
+              <Text style={{ fontSize: 40, marginBottom: 12 }}>🙏</Text>
+              <Text style={styles.emptyText}>No students marked present yet for today.</Text>
+            </View>
+          }
+          ListFooterComponent={<LegalFooter />}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  // ── Main Render ────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0f0d15" />
@@ -228,6 +507,19 @@ export default function ClassListScreen({ route, navigation }) {
         }
         ListHeaderComponent={
           <>
+            {/* ── Logo Header ── */}
+            <View style={styles.logoHeader}>
+              <Image
+                source={require('../../assets/shrutmandir-logo.jpg')}
+                style={styles.headerLogoImg}
+                resizeMode="contain"
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.classTitle}>{className}</Text>
+                <Text style={styles.classSub}>{students.length} Students · {today}</Text>
+              </View>
+            </View>
+
             {/* ── Lock status banner ── */}
             {lockChecked && (
               <View style={[styles.lockBanner, isLocked ? styles.lockBannerLocked : styles.lockBannerOpen]}>
@@ -235,6 +527,17 @@ export default function ClassListScreen({ route, navigation }) {
                   {isLocked ? '🔒 Attendance locked for today' : '🔓 Attendance open — not yet submitted'}
                 </Text>
               </View>
+            )}
+
+            {/* ── Present Students Button (only when locked) ── */}
+            {isLocked && (
+              <TouchableOpacity
+                style={styles.presentBtn}
+                onPress={() => setShowPresent(true)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.presentBtnText}>✅  View Present Students  ({presentStudents.length})</Text>
+              </TouchableOpacity>
             )}
 
             {!isLocked && !attendanceMode && (
@@ -368,11 +671,31 @@ const styles = StyleSheet.create({
   list:        { padding: 16, paddingBottom: 100 },
   countLabel:  { color: '#918fa0', fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10, marginTop: 4 },
 
+  // Logo header
+  logoHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16,
+    backgroundColor: 'rgba(134,130,255,0.06)',
+    borderRadius: 16, padding: 12,
+    borderWidth: 1, borderColor: 'rgba(134,130,255,0.15)',
+  },
+  headerLogoImg: { width: 52, height: 52, borderRadius: 10 },
+  classTitle:  { color: '#e6e0ec', fontSize: 18, fontWeight: '800' },
+  classSub:    { color: '#918fa0', fontSize: 11, marginTop: 2 },
+
   // Lock banner
   lockBanner: { borderRadius: 14, padding: 12, marginBottom: 14, borderWidth: 1, alignItems: 'center' },
   lockBannerLocked: { backgroundColor: 'rgba(251,113,133,0.08)', borderColor: 'rgba(251,113,133,0.3)' },
   lockBannerOpen:   { backgroundColor: 'rgba(74,222,128,0.08)',  borderColor: 'rgba(74,222,128,0.3)'  },
   lockBannerText:   { fontWeight: '600', color: '#c7c4d6', fontSize: 13 },
+
+  // Present Students button
+  presentBtn: {
+    backgroundColor: 'rgba(74,222,128,0.12)',
+    borderRadius: 14, paddingVertical: 14,
+    alignItems: 'center', marginBottom: 14,
+    borderWidth: 1, borderColor: 'rgba(74,222,128,0.4)',
+  },
+  presentBtnText: { color: '#4ADE80', fontSize: 15, fontWeight: '700' },
 
   // Attendance mode header
   attendanceHeader: { marginBottom: 14, gap: 10 },
@@ -470,4 +793,109 @@ const styles = StyleSheet.create({
     shadowColor: '#8682ff', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10,
   },
   confirmSubmitText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+
+  // ── Present Students View ─────────────────────────────────────────────────
+  presentHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16,
+    backgroundColor: 'rgba(74,222,128,0.06)',
+    borderRadius: 16, padding: 12,
+    borderWidth: 1, borderColor: 'rgba(74,222,128,0.2)',
+  },
+  presentLogo:  { width: 48, height: 48, borderRadius: 10 },
+  presentTitle: { color: '#e6e0ec', fontSize: 18, fontWeight: '800' },
+  presentSub:   { color: '#918fa0', fontSize: 11, marginTop: 2 },
+  backBtn: {
+    backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10, padding: 8,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  backBtnText: { color: '#918fa0', fontSize: 12, fontWeight: '700' },
+
+  presentStatRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+  presentStat: {
+    flex: 1, paddingVertical: 12, borderRadius: 14, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  presentStatNum:   { fontSize: 22, fontWeight: '800' },
+  presentStatLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
+
+  presentCard: {
+    backgroundColor: 'rgba(43,41,50,0.5)',
+    borderRadius: 16, marginBottom: 10,
+    borderWidth: 1, flexDirection: 'row', alignItems: 'center',
+    overflow: 'hidden',
+  },
+  presentCardLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', padding: 14 },
+  presentAvatar: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: 'rgba(74,222,128,0.15)',
+    justifyContent: 'center', alignItems: 'center', marginRight: 12,
+    borderWidth: 1,
+  },
+  presentAvatarText: { color: '#4ADE80', fontSize: 15, fontWeight: '700' },
+  presentNameBlock:  { flex: 1 },
+  presentName:  { color: '#e6e0ec', fontSize: 15, fontWeight: '600' },
+  presentSub2:  { color: '#918fa0', fontSize: 11, marginTop: 2 },
+  statusChip: {
+    alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 8, borderWidth: 1, marginTop: 6,
+  },
+  logBtn: {
+    backgroundColor: 'rgba(134,130,255,0.15)',
+    borderLeftWidth: 1, borderLeftColor: 'rgba(134,130,255,0.2)',
+    paddingHorizontal: 16, alignSelf: 'stretch',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  logBtnText: { color: '#8682ff', fontSize: 13, fontWeight: '800', textAlign: 'center' },
+
+  emptyWrap: { alignItems: 'center', marginTop: 60 },
+  emptyText: { color: '#918fa0', fontSize: 15, textAlign: 'center' },
+
+  // ── Activity Log Modal ────────────────────────────────────────────────────
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalCard:    {
+    backgroundColor: '#1d1a23', borderTopLeftRadius: 32, borderTopRightRadius: 32,
+    padding: 24, paddingBottom: 40, maxHeight: '85%',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  modalTitle: { color: '#e6e0ec', fontSize: 24, fontWeight: '800', marginBottom: 4 },
+  modalSub:   { color: '#918fa0', fontSize: 14, marginBottom: 20 },
+  typeRow:    { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  typeBtn:    {
+    flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  typeBtnActive:     { backgroundColor: 'rgba(134,130,255,0.15)', borderColor: '#8682ff' },
+  typeBtnText:       { color: '#918fa0', fontSize: 13, fontWeight: '700' },
+  typeBtnTextActive: { color: '#c3c0ff' },
+
+  gathaRow:    {
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  gathaRowSel: { backgroundColor: 'rgba(134,130,255,0.05)' },
+  check:       { color: '#8682ff', fontSize: 20, marginRight: 12 },
+  gathaName:   { flex: 1, color: '#e6e0ec', fontSize: 15, fontWeight: '500' },
+  gathaPts:    { color: '#4ADE80', fontWeight: '700', fontSize: 14 },
+
+  input:       {
+    backgroundColor: 'rgba(0,0,0,0.3)', color: '#e6e0ec',
+    borderRadius: 12, padding: 16, fontSize: 15,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+
+  modalFooter:   { flexDirection: 'row', gap: 12, marginTop: 24 },
+  modalCancelBtn:     {
+    flex: 1, paddingVertical: 16, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center',
+  },
+  modalCancelBtnText: { color: '#918fa0', fontWeight: '700', fontSize: 15 },
+  modalSubmitBtn: {
+    flex: 2, paddingVertical: 16, borderRadius: 14, backgroundColor: '#8682ff',
+    alignItems: 'center',
+    shadowColor: '#8682ff', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10,
+  },
+  modalSubmitBtnText: { color: '#ffffff', fontWeight: '700', fontSize: 15 },
 });

@@ -14,7 +14,7 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Alert, StatusBar,
-  ActivityIndicator, Modal, ScrollView, TextInput, Animated,
+  ActivityIndicator, Modal, ScrollView, TextInput, Animated, Image,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
@@ -396,7 +396,11 @@ export default function ScannerScreen({ navigation }) {
         {/* Top bar */}
         <View style={styles.topBar}>
           <View style={styles.topRow}>
-            <Text style={styles.topTitle}>🎵 ShrutMandir</Text>
+            <Image
+              source={require('../../assets/shrutmandir-logo.jpg')}
+              style={styles.topLogo}
+              resizeMode="contain"
+            />
             <View style={styles.topActions}>
               <TouchableOpacity style={[styles.iconBtn, torchOn && styles.iconBtnActive]} onPress={() => setTorchOn(t => !t)}>
                 <Text style={styles.iconBtnText}>{torchOn ? '🔦' : '💡'}</Text>
@@ -570,6 +574,7 @@ const styles = StyleSheet.create({
 
   topBar: { backgroundColor: 'rgba(0,0,0,0.78)', paddingTop: 54, paddingBottom: 14, paddingHorizontal: 18, alignItems: 'center' },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 14 },
+  topLogo: { width: 44, height: 44, borderRadius: 10 },
   topTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
   topActions: { flexDirection: 'row', gap: 10 },
   iconBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', position: 'relative' },

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE } from '../config';
 import LegalFooter from '../components/LegalFooter';
@@ -40,7 +40,14 @@ export default function TeacherProfileScreen({ userData, onLogout }) {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0f0e17" />
       <View style={styles.content}>
-        <Text style={styles.pageTitle}>👤 My Profile</Text>
+        <View style={styles.pageHeader}>
+          <Image
+            source={require('../../assets/shrutmandir-logo.jpg')}
+            style={styles.pageLogo}
+            resizeMode="contain"
+          />
+          <Text style={styles.pageTitle}>My Profile</Text>
+        </View>
 
         <View style={styles.card}>
           <View style={styles.avatar}>
@@ -86,7 +93,9 @@ export default function TeacherProfileScreen({ userData, onLogout }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0d15' },
   content: { padding: 20, flex: 1 },
-  pageTitle: { color: '#e6e0ec', fontSize: 26, fontWeight: '800', marginBottom: 24, marginTop: 10 },
+  pageHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 24, marginTop: 10 },
+  pageLogo: { width: 44, height: 44, borderRadius: 10 },
+  pageTitle: { color: '#e6e0ec', fontSize: 24, fontWeight: '800' },
   
   card: {
     backgroundColor: 'rgba(44,38,77,0.4)',

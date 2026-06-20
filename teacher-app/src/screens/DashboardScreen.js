@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, ActivityIndicator, StyleSheet,
-  SafeAreaView, StatusBar, RefreshControl, TouchableOpacity, Alert, ScrollView
+  SafeAreaView, StatusBar, RefreshControl, TouchableOpacity, Alert, ScrollView, Image
 } from 'react-native';
 
 import { API_BASE } from '../config';
@@ -88,9 +88,18 @@ export default function DashboardScreen() {
         }
         ListHeaderComponent={
           <>
-            {/* ── Page Title ── */}
-            <Text style={styles.pageTitle}>📊 Dashboard</Text>
-            <Text style={styles.dateLabel}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
+            {/* ── Page Header with Logo ── */}
+            <View style={styles.pageHeader}>
+              <Image
+                source={require('../../assets/shrutmandir-logo.jpg')}
+                style={styles.headerLogo}
+                resizeMode="contain"
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pageTitle}>📊 Dashboard</Text>
+                <Text style={styles.dateLabel}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
+              </View>
+            </View>
 
             {/* ── Today's Stats ── */}
             <Text style={styles.sectionLabel}>TODAY'S SUMMARY</Text>
@@ -181,8 +190,10 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12, color: '#c3c0ff', fontSize: 15 },
 
   list:        { padding: 20, paddingBottom: 40 },
-  pageTitle:   { color: '#e6e0ec', fontSize: 26, fontWeight: '800', marginBottom: 4 },
-  dateLabel:   { color: '#8682ff', fontSize: 13, marginBottom: 20 },
+  pageHeader:  { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
+  headerLogo:  { width: 54, height: 54, borderRadius: 12 },
+  pageTitle:   { color: '#e6e0ec', fontSize: 22, fontWeight: '800', marginBottom: 2 },
+  dateLabel:   { color: '#8682ff', fontSize: 12 },
   sectionLabel:{ color: '#8682ff', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12, marginTop: 8 },
 
   // Filters
